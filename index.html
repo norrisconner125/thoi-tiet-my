@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thời Tiết Mỹ</title>
+<meta name="description" content="Thời tiết Mỹ từ NOAA/NWS: dự báo, cảnh báo, radar, thảo luận dự báo và bão NHC.">
+<meta name="theme-color" content="#1d5fa8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Thời Tiết Mỹ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: thanh tìm kiếm trên cùng, cảnh báo ngay dưới, bản đồ radar toàn chiều rộng, lưới 2 cột: hiện tại + thảo luận dự báo | theo giờ + 7 ngày, cuối cùng là bão NHC */
+:root {
+  --bg: #eef2f6;
+  --surface: #ffffff;
+  --line: #d5dde6;
+  --fg: #142233;
+  --muted: #5a6b7d;
+  --accent: #1d5fa8;
+  --accent-soft: #dce8f6;
+  --warm: #d9622b;
+  --cold: #2f7fc9;
+  --alert-bg: #fde8e4;
+  --alert-fg: #8e2414;
+  --alert-edge: #d0391f;
+  --watch-bg: #fff3d6;
+  --watch-fg: #7a4d00;
+  --watch-edge: #e0a100;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1520; --surface: #152131; --line: #26364a; --fg: #e3ebf4; --muted: #8fa1b5;
+    --accent: #6aa8eb; --accent-soft: #1c3350; --warm: #f08a55; --cold: #6cb2f0;
+    --alert-bg: #3a1712; --alert-fg: #ffc2b5; --alert-edge: #ef5a3d;
+    --watch-bg: #33280c; --watch-fg: #ffd98a; --watch-edge: #e0a100;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--f-body);
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { margin: 0; font: 700 28px/1 var(--f-display); letter-spacing: .02em; text-transform: uppercase; }
+.brand small { font: 500 12px var(--f-data); color: var(--muted); letter-spacing: .06em; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search { position: relative; }
+.search input {
+  width: min(320px, 70vw); padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--fg); font: inherit;
+}
+.search input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.suggest {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5; margin: 0; padding: 4px 0; list-style: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .15);
+}
+.suggest li { padding: 8px 12px; cursor: pointer; }
+.suggest li:hover, .suggest li[aria-selected="true"] { background: var(--accent-soft); }
+.suggest li span { color: var(--muted); font-size: 13px; }
+button {
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  color: var(--fg); font: 500 14px var(--f-body); cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+.unit { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.unit button { border: 0; border-radius: 0; padding: 9px 11px; font-family: var(--f-data); }
+.unit button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+
+.status { color: var(--muted); font-size: 14px; min-height: 1.5em; }
+.status.err { color: var(--alert-fg); }
+
+.alerts { display: grid; gap: 8px; }
+.alert { border-left: 5px solid var(--alert-edge); background: var(--alert-bg); color: var(--alert-fg); border-radius: 6px; padding: 10px 14px; }
+.alert.watch { border-color: var(--watch-edge); background: var(--watch-bg); color: var(--watch-fg); }
+.alert summary { cursor: pointer; font-weight: 600; }
+.alert summary small { font-weight: 400; opacity: .85; margin-left: 6px; }
+.alert p { margin: 8px 0 0; white-space: pre-line; font-size: 14px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+.panel h2 {
+  margin: 0 0 12px; font: 600 15px var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+}
+.panel h2 small { font: 400 12px var(--f-data); letter-spacing: 0; text-transform: none; }
+
+.place { font: 700 34px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+.office { font: 400 12px var(--f-data); color: var(--muted); margin-top: 4px; }
+.now { display: flex; align-items: center; gap: 16px; margin: 14px 0 10px; }
+.now .temp { font: 600 76px/0.9 var(--f-display); font-variant-numeric: tabular-nums; }
+.now .glyph { font-size: 46px; line-height: 1; }
+.now .desc { font-size: 17px; font-weight: 500; }
+.now .feels { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; margin: 14px 0 0; }
+.facts div { border-top: 1px solid var(--line); padding-top: 6px; }
+.facts dt { font: 500 11px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 2px 0 0; font: 500 16px var(--f-data); font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+
+.chart-wrap { overflow-x: auto; }
+.chart-wrap svg { display: block; min-width: 560px; width: 100%; height: auto; }
+.chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.chart-legend i { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+.days { display: grid; gap: 0; }
+.day { display: grid; grid-template-columns: 92px 34px minmax(0, 1fr) 52px 108px; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.day:first-child { border-top: 0; }
+.day .dn { font-weight: 600; }
+.day .dn small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.day .g { font-size: 22px; text-align: center; }
+.day .sf { font-size: 14px; min-width: 0; }
+.day .pop { font: 500 13px var(--f-data); color: var(--cold); text-align: right; }
+.range { display: flex; align-items: center; gap: 6px; font: 500 14px var(--f-data); font-variant-numeric: tabular-nums; justify-content: flex-end; }
+.range .lo { color: var(--muted); }
+.day .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); margin: 2px 0 4px; }
+@media (max-width: 520px) {
+  .day { grid-template-columns: 76px 28px minmax(0, 1fr) 84px; }
+  .day .pop { display: none; }
+}
+/* Bản đồ radar */
+.map-panel { padding: 0; overflow: hidden; }
+.map-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 18px; }
+.map-head h2 { margin: 0; }
+.map-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; color: var(--muted); }
+.map-tools label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.map-tools input[type=range] { width: 90px; accent-color: var(--accent); }
+.map-tools button { padding: 5px 10px; font-size: 13px; }
+#map { height: 440px; background: var(--bg); }
+@media (max-width: 520px) { #map { height: 340px; } }
+.map-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding: 8px 18px 12px; font-size: 12px; color: var(--muted); }
+.dbz { display: flex; align-items: center; gap: 6px; font-family: var(--f-data); }
+.dbz i { display: block; width: 160px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, #04e9e7, #019ff4, #0300f4, #02fd02, #01c501, #008e00, #fdf802, #e5bc00, #fd9500, #fd0000, #d40000, #bc0000, #f800fd); }
+.map-foot a, .trop a, .afd a { color: var(--accent); }
+.leaflet-container { font: 13px var(--f-body); }
+.storm-pin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 12px var(--f-data); border: 2px solid #fff; box-shadow: 0 1px 6px rgb(0 0 0 / .4); }
+.leaflet-popup-content b { font-size: 14px; }
+
+/* Bão NHC */
+.storms { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.storm { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.storm-top { display: flex; align-items: center; gap: 10px; }
+.storm-top .storm-pin { flex: none; width: 36px; height: 36px; border: 0; box-shadow: none; }
+.storm h3 { margin: 0; font: 700 22px/1 var(--f-display); }
+.storm h3 small { display: block; font: 500 12px var(--f-body); color: var(--muted); margin-top: 3px; }
+.storm dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; font-size: 13px; }
+.storm dt { color: var(--muted); }
+.storm dd { margin: 0; font-family: var(--f-data); }
+.storm .links { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.quiet { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.tabs { display: flex; gap: 6px; margin: 4px 0 10px; flex-wrap: wrap; }
+.tabs button { padding: 6px 12px; font-size: 13px; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+
+/* Văn bản sản phẩm NWS (AFD, TWO) */
+.product { margin: 0; max-height: 520px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; font: 13px/1.55 var(--f-data); white-space: pre-wrap; overflow-wrap: anywhere; }
+.product .sec { display: block; color: var(--accent); font-weight: 600; margin-top: 6px; }
+.afd-meta { font-size: 13px; color: var(--muted); margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.afd-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.afd-jump button { padding: 4px 9px; font-size: 12px; font-family: var(--f-data); }
+
+footer { color: var(--muted); font-size: 12px; }
+footer a { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1>Thời Tiết Mỹ</h1><small>NOAA · NWS</small></div>
+    <div class="controls">
+      <div class="search">
+        <input id="q" type="search" placeholder="Thành phố, vd: Chicago" autocomplete="off" aria-label="Tìm thành phố ở Mỹ">
+        <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+      </div>
+      <button id="geo" type="button">Vị trí của tôi</button>
+      <button id="install" type="button" hidden>Cài app</button>
+      <div class="unit" role="group" aria-label="Đơn vị nhiệt độ">
+        <button id="uF" type="button" aria-pressed="true">°F</button>
+        <button id="uC" type="button" aria-pressed="false">°C</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="status" id="status" role="status"></div>
+  <section class="alerts" id="alerts" aria-label="Cảnh báo NWS"></section>
+
+  <section class="panel map-panel" id="mapPanel" hidden>
+    <div class="map-head">
+      <h2>Bản đồ radar <small id="radarTime"></small></h2>
+      <div class="map-tools">
+        <label><input type="checkbox" id="lyrRadar" checked> Radar</label>
+        <label><input type="checkbox" id="lyrAlerts" checked> Vùng cảnh báo</label>
+        <label><input type="checkbox" id="lyrStorms" checked> Bão NHC</label>
+        <label>Độ đậm <input type="range" id="radarOpacity" min="0.2" max="1" step="0.1" value="0.7"></label>
+        <button type="button" id="mapHome">Về vị trí</button>
+      </div>
+    </div>
+    <div id="map" role="region" aria-label="Bản đồ radar"></div>
+    <div class="map-foot">
+      <span class="dbz">Phản hồi radar (dBZ) 5 <i></i> 75</span>
+      <span>Radar: NOAA MRMS (cập nhật ~2 phút/lần) · Trạm gần nhất <span id="radarId"></span> · <a id="radarLink" href="https://radar.weather.gov/" target="_blank" rel="noopener">radar.weather.gov ↗</a></span>
+    </div>
+  </section>
+
+  <div class="grid" id="main" hidden>
+    <div class="col">
+      <section class="panel">
+        <p class="place" id="place"></p>
+        <div class="office" id="office"></div>
+        <div class="now">
+          <div class="glyph" id="nowGlyph"></div>
+          <div class="temp" id="nowTemp"></div>
+          <div><div class="desc" id="nowDesc"></div><div class="feels" id="nowFeels"></div></div>
+        </div>
+        <dl class="facts" id="facts"></dl>
+        <div class="office" id="obsMeta"></div>
+      </section>
+      <section class="panel afd" id="afdPanel">
+        <h2>Thảo luận dự báo <small id="afdOffice"></small></h2>
+        <p class="afd-meta" id="afdMeta">Đang tải bản thảo luận của văn phòng NWS…</p>
+        <div class="afd-jump" id="afdJump"></div>
+        <pre class="product" id="afdText" hidden></pre>
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel">
+        <h2>48 giờ tới <small>nhiệt độ &amp; khả năng mưa</small></h2>
+        <div class="chart-wrap" id="chart"></div>
+        <div class="chart-legend"><span><i style="background:var(--warm)"></i>Nhiệt độ</span><span><i style="background:var(--cold)"></i>Khả năng mưa (%)</span></div>
+      </section>
+      <section class="panel">
+        <h2>Dự báo 7 ngày <small>bấm để xem chi tiết</small></h2>
+        <div class="days" id="days"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel trop" id="tropPanel">
+    <h2>Bão nhiệt đới · NHC <small id="tropUpdated"></small></h2>
+    <div class="storms" id="storms"></div>
+    <p class="quiet" id="tropMsg">Đang tải dữ liệu từ Trung tâm Bão Quốc gia (NHC)…</p>
+    <div id="tropAlerts" class="alerts" style="margin-bottom:12px"></div>
+    <div class="tabs" role="tablist" id="twoTabs">
+      <button type="button" role="tab" data-basin="ABNT20" aria-selected="true">Đại Tây Dương</button>
+      <button type="button" role="tab" data-basin="ABPZ20" aria-selected="false">Đông Thái Bình Dương</button>
+      <button type="button" role="tab" data-basin="ACPN50" aria-selected="false">Trung Thái Bình Dương</button>
+    </div>
+    <p class="afd-meta" id="twoMeta"></p>
+    <pre class="product" id="twoText" hidden></pre>
+  </section>
+
+  <footer>Dữ liệu: <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener">National Weather Service API</a> (NOAA) · Radar: NOAA/NCEP MRMS · Bão: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">National Hurricane Center</a> · Tìm địa điểm: Open-Meteo Geocoding · Nền bản đồ: OpenStreetMap/CARTO. Chỉ hỗ trợ lãnh thổ Hoa Kỳ.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const NWS = 'https://api.weather.gov';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let unit = store.get('unit') || 'F';
+let lastData = null;
+let tz = undefined; // múi giờ của địa điểm (từ NWS)
+
+// ---------- Tiện ích ----------
+const toF = c => c * 9 / 5 + 32;
+const fmtT = (v, from = 'F') => {
+  if (v == null || isNaN(v)) return '—';
+  const f = from === 'C' ? toF(v) : v;
+  return Math.round(unit === 'F' ? f : (f - 32) * 5 / 9) + '°';
+};
+const tNum = (f) => unit === 'F' ? f : (f - 32) * 5 / 9;
+const DIRS = ['B','BĐB','ĐB','ĐĐB','Đ','ĐĐN','ĐN','NĐN','N','NTN','TN','TTN','T','TTB','TB','BTB'];
+const dirName = deg => deg == null ? '' : DIRS[Math.round(deg / 22.5) % 16];
+const kmh2mph = v => v * 0.621371;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function glyph(text = '', isDay = true) {
+  const t = text.toLowerCase();
+  if (/thunder|t-storm/.test(t)) return '⛈️';
+  if (/snow|flurr|blizzard/.test(t)) return '🌨️';
+  if (/sleet|freezing|ice/.test(t)) return '🧊';
+  if (/rain|shower|drizzle/.test(t)) return /chance|slight|scattered|isolated/.test(t) ? '🌦️' : '🌧️';
+  if (/fog|haze|smoke|mist/.test(t)) return '🌫️';
+  if (/wind|breezy|blustery/.test(t)) return '💨';
+  if (/mostly cloudy|overcast|^cloudy/.test(t)) return '☁️';
+  if (/partly|mostly sunny|mostly clear/.test(t)) return isDay ? '⛅' : '☁️';
+  if (/sunny|clear|fair/.test(t)) return isDay ? '☀️' : '🌙';
+  return isDay ? '🌤️' : '🌙';
+}
+
+// NWS hay trả lỗi 500 tạm thời, nên thử lại 1 lần
+async function nws(url, tries = 2) {
+  for (let i = 0; i < tries; i++) {
+    const r = await fetch(url);
+    if (r.ok) return r.json();
+    if (r.status === 404) { const e = new Error('404'); e.status = 404; throw e; }
+    if (i === tries - 1) throw new Error(`NWS trả lỗi ${r.status}`);
+    await new Promise(res => setTimeout(res, 800));
+  }
+}
+
+function setStatus(msg, err = false) { $('status').textContent = msg; $('status').className = 'status' + (err ? ' err' : ''); }
+
+// ---------- Tải dữ liệu ----------
+async function load(lat, lon, label) {
+  lat = (+lat).toFixed(4); lon = (+lon).toFixed(4);
+  setStatus('Đang tải dữ liệu từ NWS…');
+  try {
+    let point;
+    try { point = await nws(`${NWS}/points/${lat},${lon}`); }
+    catch (e) {
+      if (e.status === 404) { setStatus('Vị trí này nằm ngoài vùng phủ của NWS. Hãy chọn một địa điểm ở Mỹ.', true); return; }
+      throw e;
+    }
+    const p = point.properties;
+    const city = p.relativeLocation?.properties;
+    const place = label || (city ? `${city.city}, ${city.state}` : `${lat}, ${lon}`);
+
+    const [fc, hourly, alerts, stations] = await Promise.all([
+      nws(p.forecast),
+      nws(p.forecastHourly),
+      nws(`${NWS}/alerts/active?point=${lat},${lon}`).catch(() => ({ features: [] })),
+      nws(p.observationStations).catch(() => null)
+    ]);
+
+    let obs = null, station = null;
+    const st = stations?.features?.[0];
+    if (st) {
+      station = st.properties;
+      obs = await nws(`${NWS}/stations/${station.stationIdentifier}/observations/latest`).then(d => d.properties).catch(() => null);
+    }
+
+    lastData = { place, p, fc: fc.properties.periods, hourly: hourly.properties.periods, alerts: alerts.features, obs, station };
+    store.set('last', { lat, lon, label: place });
+    render();
+    updateMap(+lat, +lon, place, p, alerts.features);
+    loadAFD(p.cwa || p.gridId);
+    setStatus(`Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`);
+  } catch (e) {
+    console.error(e);
+    setStatus('Không tải được dữ liệu NWS (' + e.message + '). Thử lại sau ít phút.', true);
+  }
+}
+
+// ---------- Hiển thị ----------
+function render() {
+  if (!lastData) return;
+  const { place, p, fc, hourly, alerts, obs, station } = lastData;
+  tz = p.timeZone;
+  $('main').hidden = false;
+  $('place').textContent = place;
+  $('office').textContent = `Văn phòng dự báo ${p.gridId} · lưới ${p.gridX},${p.gridY} · ${p.timeZone}`;
+
+  // Hiện tại: ưu tiên số đo trạm, nếu thiếu thì dùng giờ đầu tiên của dự báo
+  const h0 = hourly[0];
+  const tC = obs?.temperature?.value;
+  const desc = obs?.textDescription || h0.shortForecast;
+  const isDay = h0.isDaytime;
+  $('nowGlyph').textContent = glyph(desc, isDay);
+  $('nowTemp').textContent = tC != null ? fmtT(tC, 'C') : fmtT(h0.temperature);
+  $('nowDesc').textContent = desc;
+  const feelsC = obs?.heatIndex?.value ?? obs?.windChill?.value;
+  $('nowFeels').textContent = feelsC != null ? `Cảm giác như ${fmtT(feelsC, 'C')}` : '';
+
+  const windKmh = obs?.windSpeed?.value;
+  const gustKmh = obs?.windGust?.value;
+  const wind = windKmh != null
+    ? `${Math.round(kmh2mph(windKmh))} mph ${dirName(obs.windDirection?.value)}`
+    : `${h0.windSpeed} ${h0.windDirection}`;
+  const rh = obs?.relativeHumidity?.value ?? h0.relativeHumidity?.value;
+  const dew = obs?.dewpoint?.value;
+  const pres = obs?.barometricPressure?.value;
+  const vis = obs?.visibility?.value;
+  const facts = [
+    ['Gió', wind + (gustKmh ? `, giật ${Math.round(kmh2mph(gustKmh))}` : '')],
+    ['Độ ẩm', rh != null ? Math.round(rh) + '%' : '—'],
+    ['Điểm sương', dew != null ? fmtT(dew, 'C') : '—'],
+    ['Áp suất', pres != null ? (pres / 3386.39).toFixed(2) + ' inHg' : '—'],
+    ['Tầm nhìn', vis != null ? (vis / 1609.34).toFixed(1) + ' mi' : '—'],
+    ['Khả năng mưa', (h0.probabilityOfPrecipitation?.value ?? 0) + '%']
+  ];
+  $('facts').innerHTML = facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
+  $('obsMeta').textContent = obs && station
+    ? `Trạm quan trắc ${station.stationIdentifier} (${station.name}) · đo lúc ${new Date(obs.timestamp).toLocaleTimeString('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`
+    : 'Không có số đo trạm gần đây, đang hiển thị dự báo giờ hiện tại.';
+
+  // Cảnh báo
+  $('alerts').innerHTML = alerts.map(a => {
+    const x = a.properties;
+    const cls = /Warning|Emergency/.test(x.event) ? '' : ' watch';
+    const until = x.ends || x.expires;
+    return `<details class="alert${cls}"><summary>⚠ ${esc(x.event)}<small>${until ? 'đến ' + new Date(until).toLocaleString('vi-VN', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''} · ${esc(x.senderName)}</small></summary>
+      <p><b>${esc(x.headline)}</b></p><p>${esc(x.description)}</p>${x.instruction ? `<p><b>Hướng dẫn:</b> ${esc(x.instruction)}</p>` : ''}</details>`;
+  }).join('');
+
+  // Trạm radar gần nhất (link sang trang radar chính thức)
+  const rs = p.radarStation;
+  $('radarId').textContent = rs || '—';
+  $('radarLink').href = rs ? `https://radar.weather.gov/station/${rs.toLowerCase()}/standard` : 'https://radar.weather.gov/';
+
+  renderChart(hourly.slice(0, 48));
+  renderDays(fc);
+}
+
+function renderChart(hrs) {
+  const W = 720, H = 230, L = 38, R = 38, T = 16, B = 34;
+  const iw = W - L - R, ih = H - T - B;
+  const temps = hrs.map(h => tNum(h.temperature));
+  let lo = Math.floor(Math.min(...temps) / 5) * 5, hi = Math.ceil(Math.max(...temps) / 5) * 5;
+  if (hi - lo < 10) hi = lo + 10;
+  const x = i => L + (i / (hrs.length - 1)) * iw;
+  const y = t => T + ih - ((t - lo) / (hi - lo)) * ih;
+  const yp = v => T + ih - (v / 100) * ih;
+  let g = '';
+  // lưới + nhãn trục trái (nhiệt độ) và phải (%)
+  const step = (hi - lo) / 5;
+  for (let k = 0; k <= 5; k++) {
+    const t = lo + k * step, yy = y(t);
+    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+    g += `<text x="${L - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(t)}°</text>`;
+    g += `<text x="${W - R + 6}" y="${yy + 4}" font-size="11" fill="var(--muted)">${k * 20}%</text>`;
+  }
+  // mưa: cột
+  const bw = iw / hrs.length * 0.7;
+  hrs.forEach((h, i) => {
+    const v = h.probabilityOfPrecipitation?.value || 0;
+    if (v > 0) g += `<rect x="${x(i) - bw / 2}" y="${yp(v)}" width="${bw}" height="${T + ih - yp(v)}" fill="var(--cold)" opacity=".28"/>`;
+  });
+  // vạch đêm + nhãn giờ
+  hrs.forEach((h, i) => {
+    const d = new Date(h.startTime);
+    const hr = +h.startTime.slice(11, 13);
+    if (hr % 6 === 0) {
+      const lab = hr === 0 ? d.toLocaleDateString('vi-VN', { timeZone: tz, weekday: 'short' }) : hr + 'h';
+      g += `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${T + ih}" stroke="var(--line)" stroke-dasharray="${hr === 0 ? '' : '2 3'}"/>`;
+      g += `<text x="${x(i)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="${hr === 0 ? 'var(--fg)' : 'var(--muted)'}" font-weight="${hr === 0 ? 600 : 400}">${lab}</text>`;
+    }
+  });
+  // đường nhiệt độ + vùng tô
+  const pts = temps.map((t, i) => `${x(i).toFixed(1)},${y(t).toFixed(1)}`);
+  g += `<polygon points="${L},${T + ih} ${pts.join(' ')} ${x(hrs.length - 1)},${T + ih}" fill="var(--warm)" opacity=".10"/>`;
+  g += `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--warm)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  // max/min
+  const iMax = temps.indexOf(Math.max(...temps)), iMin = temps.indexOf(Math.min(...temps));
+  [[iMax, -8], [iMin, 16]].forEach(([i, dy]) => {
+    g += `<circle cx="${x(i)}" cy="${y(temps[i])}" r="4" fill="var(--warm)"/>`;
+    g += `<text x="${Math.min(Math.max(x(i), L + 12), W - R - 12)}" y="${y(temps[i]) + dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">${Math.round(temps[i])}°</text>`;
+  });
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Biểu đồ nhiệt độ 48 giờ" font-family="IBM Plex Mono, monospace">${g}</svg>`;
+}
+
+function renderDays(periods) {
+  // Ghép cặp ngày/đêm. Nếu bắt đầu bằng "Tonight" thì ngày đầu chỉ có đêm.
+  const days = [];
+  for (let i = 0; i < periods.length; i++) {
+    const a = periods[i];
+    if (a.isDaytime) { days.push({ day: a, night: periods[i + 1] && !periods[i + 1].isDaytime ? periods[++i] : null }); }
+    else days.push({ day: null, night: a });
+  }
+  $('days').innerHTML = days.slice(0, 7).map((d, idx) => {
+    const main = d.day || d.night;
+    const date = new Date(main.startTime);
+    const name = idx === 0 ? (d.day ? 'Hôm nay' : 'Tối nay') : date.toLocaleDateString('vi-VN', { timeZone: tz, weekday: 'long' });
+    const pop = Math.max(d.day?.probabilityOfPrecipitation?.value || 0, d.night?.probabilityOfPrecipitation?.value || 0);
+    const detail = [d.day && `<b>${esc(d.day.name)}:</b> ${esc(d.day.detailedForecast)}`, d.night && `<b>${esc(d.night.name)}:</b> ${esc(d.night.detailedForecast)}`].filter(Boolean).join('<br>');
+    return `<div class="day" tabindex="0" role="button" aria-expanded="false">
+      <div class="dn">${name}<small>${date.toLocaleDateString('vi-VN', { timeZone: tz, day: 'numeric', month: 'numeric' })}</small></div>
+      <div class="g">${glyph(main.shortForecast, !!d.day)}</div>
+      <div class="sf">${esc(main.shortForecast)}</div>
+      <div class="pop">${pop ? pop + '%' : ''}</div>
+      <div class="range">${d.day ? `<span>${fmtT(d.day.temperature)}</span>` : ''}<span class="lo">${d.night ? fmtT(d.night.temperature) : ''}</span></div>
+      <div class="detail" hidden>${detail}</div>
+    </div>`;
+  }).join('');
+}
+
+$('days').addEventListener('click', e => toggleDay(e.target.closest('.day')));
+$('days').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDay(e.target.closest('.day')); } });
+function toggleDay(el) {
+  if (!el) return;
+  const det = el.querySelector('.detail');
+  det.hidden = !det.hidden;
+  el.setAttribute('aria-expanded', String(!det.hidden));
+}
+
+// ---------- Tìm kiếm ----------
+let timer, results = [], active = -1;
+$('q').addEventListener('input', () => {
+  clearTimeout(timer);
+  const q = $('q').value.trim();
+  if (q.length < 2) { $('suggest').hidden = true; return; }
+  timer = setTimeout(async () => {
+    try {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&countryCode=US&language=en`).then(r => r.json());
+      results = r.results || [];
+      active = -1;
+      showSuggest();
+    } catch { results = []; showSuggest(); }
+  }, 250);
+});
+function showSuggest() {
+  const ul = $('suggest');
+  ul.innerHTML = results.length
+    ? results.map((r, i) => `<li role="option" data-i="${i}" aria-selected="${i === active}">${esc(r.name)} <span>${esc(r.admin1 || '')}${r.admin2 ? ' · ' + esc(r.admin2) : ''}</span></li>`).join('')
+    : '<li aria-disabled="true"><span>Không tìm thấy địa điểm ở Mỹ</span></li>';
+  ul.hidden = false;
+}
+function pick(i) {
+  const r = results[i]; if (!r) return;
+  $('suggest').hidden = true;
+  $('q').value = '';
+  load(r.latitude, r.longitude, `${r.name}, ${r.admin1 || ''}`.replace(/, $/, ''));
+}
+$('suggest').addEventListener('mousedown', e => { const li = e.target.closest('li[data-i]'); if (li) pick(+li.dataset.i); });
+$('q').addEventListener('keydown', e => {
+  if ($('suggest').hidden) return;
+  if (e.key === 'ArrowDown') { active = Math.min(active + 1, results.length - 1); showSuggest(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { active = Math.max(active - 1, 0); showSuggest(); e.preventDefault(); }
+  else if (e.key === 'Enter') { pick(active < 0 ? 0 : active); }
+  else if (e.key === 'Escape') { $('suggest').hidden = true; }
+});
+$('q').addEventListener('blur', () => setTimeout(() => $('suggest').hidden = true, 150));
+
+$('geo').addEventListener('click', () => {
+  if (!navigator.geolocation) { setStatus('Trình duyệt không hỗ trợ định vị.', true); return; }
+  setStatus('Đang lấy vị trí…');
+  navigator.geolocation.getCurrentPosition(
+    pos => load(pos.coords.latitude, pos.coords.longitude),
+    () => setStatus('Không lấy được vị trí. Hãy cho phép truy cập vị trí hoặc tìm theo tên thành phố.', true),
+    { timeout: 10000 }
+  );
+});
+
+function setUnit(u) {
+  unit = u; store.set('unit', u);
+  $('uF').setAttribute('aria-pressed', u === 'F'); $('uC').setAttribute('aria-pressed', u === 'C');
+  render();
+}
+$('uF').onclick = () => setUnit('F');
+$('uC').onclick = () => setUnit('C');
+setUnit(unit);
+
+// ================= BẢN ĐỒ RADAR (Leaflet) =================
+// Radar phản hồi tổng hợp MRMS từ GeoServer của NOAA/NCEP (WMS), phủ cả lục địa Mỹ, Alaska, Hawaii, Caribe, Guam.
+const MRMS = [
+  ['conus', 'conus_bref_qcd'], ['alaska', 'alaska_bref_qcd'], ['hawaii', 'hawaii_bref_qcd'],
+  ['carib', 'carib_bref_qcd'], ['guam', 'guam_bref_qcd']
+];
+let map, radarGroup, alertLayer, stormLayer, homeMarker, home;
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+
+function initMap() {
+  if (map || !window.L) return !!map;
+  map = L.map('map', { zoomControl: true, worldCopyJump: true });
+  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`, {
+    maxZoom: 18, subdomains: 'abcd',
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
+  }).addTo(map);
+  map.createPane('radar'); map.getPane('radar').style.zIndex = 350;
+  radarGroup = L.layerGroup(MRMS.map(([ws, layer]) =>
+    L.tileLayer.wms(`https://opengeo.ncep.noaa.gov/geoserver/${ws}/${layer}/ows`, {
+      layers: layer, format: 'image/png', transparent: true, version: '1.3.0',
+      opacity: +$('radarOpacity').value, pane: 'radar', attribution: 'Radar: NOAA/NCEP MRMS'
+    })
+  )).addTo(map);
+  alertLayer = L.layerGroup().addTo(map);
+  stormLayer = L.layerGroup().addTo(map);
+
+  $('lyrRadar').onchange = e => e.target.checked ? radarGroup.addTo(map) : radarGroup.remove();
+  $('lyrAlerts').onchange = e => e.target.checked ? alertLayer.addTo(map) : alertLayer.remove();
+  $('lyrStorms').onchange = e => e.target.checked ? stormLayer.addTo(map) : stormLayer.remove();
+  $('radarOpacity').oninput = e => radarGroup.eachLayer(l => l.setOpacity(+e.target.value));
+  $('mapHome').onclick = () => home && map.setView(home, 8);
+
+  // Làm mới ảnh radar mỗi 5 phút (thêm tham số để bỏ cache)
+  setInterval(refreshRadar, 5 * 60 * 1000);
+  refreshRadar();
+  return true;
+}
+function refreshRadar() {
+  radarGroup?.eachLayer(l => l.setParams({ _t: Math.floor(Date.now() / 60000) }));
+  $('radarTime').textContent = 'ảnh lúc ' + new Date().toLocaleTimeString('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+}
+
+function alertColor(event) {
+  if (/Tornado Warning/.test(event)) return '#d0021b';
+  if (/Severe Thunderstorm Warning/.test(event)) return '#f5a623';
+  if (/Flash Flood|Flood Warning/.test(event)) return '#1aa34a';
+  if (/Hurricane|Typhoon/.test(event)) return '#c2185b';
+  if (/Tropical Storm|Storm Surge/.test(event)) return '#7b1fa2';
+  if (/Winter|Blizzard|Ice|Snow/.test(event)) return '#3f6fd8';
+  if (/Warning/.test(event)) return '#e53935';
+  if (/Watch/.test(event)) return '#e0a100';
+  return '#8d6e63';
+}
+
+function updateMap(lat, lon, place, p, alerts) {
+  $('mapPanel').hidden = false;
+  const fresh = !map;
+  if (!initMap()) {
+    $('map').innerHTML = '<p class="quiet" style="padding:16px">Không tải được thư viện bản đồ Leaflet. Kiểm tra kết nối mạng rồi tải lại trang.</p>';
+    return;
+  }
+  if (fresh && lastStorms) renderStorms(lastStorms);
+  home = [lat, lon];
+  map.invalidateSize();
+  map.setView(home, 8);
+  homeMarker?.remove();
+  homeMarker = L.circleMarker(home, { radius: 7, color: '#fff', weight: 2, fillColor: '#1d5fa8', fillOpacity: 1 })
+    .bindTooltip(place, { permanent: false }).addTo(map);
+
+  // Vẽ vùng cảnh báo đang có hiệu lực tại điểm này. Nhiều cảnh báo dùng vùng hành chính (không có geometry),
+  // khi đó lấy hình dạng vùng từ affectedZones.
+  alertLayer.clearLayers();
+  alerts.forEach(async a => {
+    const x = a.properties, color = alertColor(x.event);
+    const style = { color, weight: 2, fillColor: color, fillOpacity: .15 };
+    const popup = `<b>${esc(x.event)}</b><br>${esc(x.areaDesc || '')}`;
+    if (a.geometry) { L.geoJSON(a, { style }).bindPopup(popup).addTo(alertLayer); return; }
+    for (const z of (x.affectedZones || []).slice(0, 12)) {
+      try { const zone = await nws(z, 1); if (zone.geometry) L.geoJSON(zone, { style }).bindPopup(popup).addTo(alertLayer); } catch {}
+    }
+  });
+}
+
+// ================= THẢO LUẬN DỰ BÁO (AFD) =================
+let afdOfficeLoaded = null;
+async function loadAFD(office) {
+  if (!office || office === afdOfficeLoaded) return;
+  afdOfficeLoaded = office;
+  $('afdOffice').textContent = 'văn phòng ' + office;
+  $('afdMeta').textContent = 'Đang tải bản thảo luận của văn phòng NWS…';
+  $('afdText').hidden = true; $('afdJump').innerHTML = '';
+  try {
+    const list = await nws(`${NWS}/products/types/AFD/locations/${office}`);
+    const first = list['@graph']?.[0];
+    if (!first) { $('afdMeta').textContent = 'Văn phòng này chưa có bản thảo luận gần đây.'; return; }
+    const prod = await nws(`${NWS}/products/${first.id}`);
+    const issued = new Date(prod.issuanceTime);
+    $('afdMeta').innerHTML = `Phát hành ${issued.toLocaleString('vi-VN', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      · <a href="https://forecast.weather.gov/product.php?site=${office}&issuedby=${office}&product=AFD" target="_blank" rel="noopener">Xem trên weather.gov ↗</a>
+      · Bản gốc tiếng Anh, do chuyên gia dự báo viết.`;
+    showProduct('afdText', prod.productText, 'afdJump');
+  } catch (e) {
+    afdOfficeLoaded = null;
+    $('afdMeta').textContent = 'Không tải được bản thảo luận (' + e.message + ').';
+  }
+}
+
+// Hiển thị văn bản sản phẩm NWS: tô đậm các mục như ".SHORT TERM...", tạo nút nhảy nhanh tới từng mục
+function showProduct(preId, text, jumpId) {
+  const pre = $(preId);
+  const secs = [];
+  const html = esc(text.replace(/\r/g, '').replace(/^\s*\d{3}\s*\n/, '')).split('\n').map(line => {
+    const m = line.match(/^\.([A-Z][A-Z0-9 /&()'-]{2,60}?)\.\.\./);
+    if (m) { const id = preId + '-s' + secs.length; secs.push([id, m[1].trim()]); return `<span class="sec" id="${id}">${line}</span>`; }
+    return line;
+  }).join('\n');
+  pre.innerHTML = html;
+  pre.hidden = false;
+  pre.scrollTop = 0;
+  if (jumpId) {
+    $(jumpId).innerHTML = secs.map(([id, name]) => `<button type="button" data-to="${id}">${esc(name)}</button>`).join('');
+    $(jumpId).onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const el = document.getElementById(b.dataset.to);
+      pre.scrollTo({ top: el.offsetTop - pre.offsetTop - 8, behavior: 'smooth' });
+    };
+  }
+}
+
+// ================= BÃO NHIỆT ĐỚI (NHC) =================
+const CLASS = {
+  TD: 'Áp thấp nhiệt đới', STD: 'Áp thấp cận nhiệt đới', TS: 'Bão nhiệt đới', STS: 'Bão cận nhiệt đới',
+  HU: 'Bão cuồng phong (Hurricane)', TY: 'Bão (Typhoon)', PTC: 'Xoáy thuận tiềm năng', PC: 'Hậu xoáy thuận', EX: 'Xoáy ngoài nhiệt đới', LO: 'Vùng áp thấp'
+};
+const BASIN = { AL: 'Đại Tây Dương', EP: 'Đông Thái Bình Dương', CP: 'Trung Thái Bình Dương' };
+// Thang Saffir–Simpson theo sức gió duy trì (knot)
+function category(kt, cls) {
+  if (cls !== 'HU' || kt < 64) return null;
+  return kt >= 137 ? 5 : kt >= 113 ? 4 : kt >= 96 ? 3 : kt >= 83 ? 2 : 1;
+}
+function stormColor(kt, cls) {
+  const c = category(kt, cls);
+  if (c) return ['#ffcc33', '#ff9933', '#ff3300', '#cc0033', '#990099'][c - 1];
+  if (cls === 'TS' || cls === 'STS') return '#2e9e5b';
+  if (cls === 'TD' || cls === 'STD') return '#3b7dd8';
+  return '#78909c';
+}
+
+async function loadTropical() {
+  // 1. Danh sách bão đang hoạt động: thử gọi thẳng NHC; nếu bị chặn thì dùng bản sao
+  //    data/CurrentStorms.json do GitHub Action cập nhật mỗi 30 phút.
+  let storms = null; stormsNote = '';
+  try {
+    const r = await fetch('https://www.nhc.noaa.gov/CurrentStorms.json');
+    if (!r.ok) throw new Error(r.status);
+    storms = (await r.json()).activeStorms || [];
+  } catch (e) {
+    try {
+      const r = await fetch('data/CurrentStorms.json?t=' + Math.floor(Date.now() / 300000));
+      const d = await r.json();
+      if (d.fetchedAt) {
+        storms = d.activeStorms || [];
+        const ageMin = (Date.now() - new Date(d.fetchedAt)) / 60000;
+        stormsNote = ageMin > 180 ? `Dữ liệu bão lấy lúc ${new Date(d.fetchedAt).toLocaleString('vi-VN')}, có thể đã cũ.` : '';
+      }
+    } catch {}
+  }
+  renderStorms(storms);
+
+  // 2. Cảnh báo bão/nước dâng đang hiệu lực trên đất Mỹ (NWS API)
+  const ev = ['Hurricane Warning', 'Hurricane Watch', 'Tropical Storm Warning', 'Tropical Storm Watch', 'Storm Surge Warning', 'Storm Surge Watch'];
+  try {
+    const a = await nws(`${NWS}/alerts/active?event=${ev.map(encodeURIComponent).join(',')}`);
+    const byEvent = {};
+    a.features.forEach(f => { (byEvent[f.properties.event] ||= new Set()).add(f.properties.senderName); });
+    $('tropAlerts').innerHTML = Object.entries(byEvent).map(([event, senders]) =>
+      `<div class="alert${/Warning/.test(event) ? '' : ' watch'}"><b>⚠ ${esc(event)}</b> đang có hiệu lực · ${esc([...senders].join(', '))}</div>`).join('');
+  } catch {}
+
+  // 3. Bản Triển vọng thời tiết nhiệt đới (TWO) cho từng lưu vực
+  try {
+    const list = await nws(`${NWS}/products/types/TWO`);
+    twoIndex = {};
+    for (const it of list['@graph'] || []) if (!twoIndex[it.wmoCollectiveId]) twoIndex[it.wmoCollectiveId] = it.id;
+  } catch { twoIndex = {}; }
+  showTWO(document.querySelector('#twoTabs [aria-selected="true"]').dataset.basin);
+}
+
+let lastStorms, stormsNote = '';
+function renderStorms(storms) {
+  lastStorms = storms;
+  stormLayer?.clearLayers();
+  $('tropUpdated').textContent = 'cập nhật ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  if (storms === null) {
+    $('storms').innerHTML = '';
+    $('tropMsg').innerHTML = 'Trình duyệt không lấy được danh sách bão từ NHC (máy chủ NHC có thể chặn truy cập trực tiếp từ trang web). Xem tại <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">nhc.noaa.gov ↗</a>. Cảnh báo bão và bản triển vọng bên dưới vẫn lấy từ NWS.';
+    return;
+  }
+  if (!storms.length) {
+    $('storms').innerHTML = '';
+    const m = new Date().getMonth() + 1;
+    $('tropMsg').textContent = (m >= 6 && m <= 11)
+      ? 'Hiện không có cơn bão nào đang hoạt động. Mùa bão Đại Tây Dương kéo dài từ 1/6 đến 30/11.'
+      : 'Hiện không có cơn bão nào. Ngoài mùa bão (Đại Tây Dương: 1/6–30/11, Đông Thái Bình Dương: 15/5–30/11).';
+    if (stormsNote) $('tropMsg').textContent += ' ' + stormsNote;
+    return;
+  }
+  $('tropMsg').textContent = stormsNote;
+  $('storms').innerHTML = storms.map(s => {
+    const kt = +s.intensity, cat = category(kt, s.classification), color = stormColor(kt, s.classification);
+    const basin = BASIN[s.id.slice(0, 2).toUpperCase()] || '';
+    const mph = Math.round(kt * 1.15078);
+    const adv = s.publicAdvisory?.url, graphics = s.forecastGraphics?.url;
+    return `<article class="storm">
+      <div class="storm-top"><div class="storm-pin" style="background:${color}">${cat ? 'C' + cat : s.classification}</div>
+        <h3>${esc(s.name)}<small>${CLASS[s.classification] || s.classification}${cat ? ' cấp ' + cat : ''} · ${basin}</small></h3></div>
+      <dl>
+        <dt>Gió mạnh nhất</dt><dd>${mph} mph (${kt} kt)</dd>
+        <dt>Áp suất</dt><dd>${esc(s.pressure)} mb</dd>
+        <dt>Vị trí</dt><dd>${esc(s.latitude)}, ${esc(s.longitude)}</dd>
+        <dt>Hướng di chuyển</dt><dd>${dirName(+s.movementDir)} ${esc(s.movementSpeed)} mph</dd>
+        <dt>Cập nhật</dt><dd>${new Date(s.lastUpdate).toLocaleString('vi-VN', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</dd>
+      </dl>
+      <div class="links">${graphics ? `<a href="${esc(graphics)}" target="_blank" rel="noopener">Đường đi &amp; nón dự báo ↗</a>` : ''}${adv ? `<a href="${esc(adv)}" target="_blank" rel="noopener">Bản tin công khai ↗</a>` : ''}<a href="#map" data-storm="${s.latitudeNumeric},${s.longitudeNumeric}">Xem trên bản đồ</a></div>
+    </article>`;
+  }).join('');
+
+  if (stormLayer) storms.forEach(s => {
+    const kt = +s.intensity, cat = category(kt, s.classification);
+    const icon = L.divIcon({ className: '', iconSize: [30, 30], html: `<div class="storm-pin" style="background:${stormColor(kt, s.classification)}">${cat ? 'C' + cat : s.classification}</div>` });
+    L.marker([s.latitudeNumeric, s.longitudeNumeric], { icon })
+      .bindPopup(`<b>${esc(s.name)}</b><br>${CLASS[s.classification] || s.classification}${cat ? ' cấp ' + cat : ''}<br>Gió ${Math.round(kt * 1.15078)} mph · ${esc(s.pressure)} mb`)
+      .addTo(stormLayer);
+  });
+}
+$('storms').addEventListener('click', e => {
+  const a = e.target.closest('[data-storm]'); if (!a || !map) return;
+  e.preventDefault();
+  $('mapPanel').scrollIntoView({ behavior: 'smooth' });
+  map.setView(a.dataset.storm.split(',').map(Number), 6);
+});
+
+let twoIndex = {};
+async function showTWO(basin) {
+  document.querySelectorAll('#twoTabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.basin === basin));
+  const id = twoIndex[basin];
+  if (!id) { $('twoMeta').textContent = 'Chưa có bản Triển vọng thời tiết nhiệt đới gần đây cho lưu vực này (thường chỉ phát hành trong mùa bão).'; $('twoText').hidden = true; return; }
+  $('twoMeta').textContent = 'Đang tải…';
+  try {
+    const prod = await nws(`${NWS}/products/${id}`);
+    $('twoMeta').textContent = `Triển vọng thời tiết nhiệt đới (TWO) · phát hành ${new Date(prod.issuanceTime).toLocaleString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })} · bản gốc tiếng Anh`;
+    showProduct('twoText', prod.productText);
+  } catch (e) { $('twoMeta').textContent = 'Không tải được (' + e.message + ').'; }
+}
+$('twoTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showTWO(b.dataset.basin); });
+
+// Tự làm mới: thời tiết mỗi 10 phút, bão mỗi 30 phút
+setInterval(() => { const l = store.get('last'); if (l) { afdOfficeLoaded = null; load(l.lat, l.lon, l.label); } }, 10 * 60 * 1000);
+setInterval(loadTropical, 30 * 60 * 1000);
+loadTropical();
+
+const last = store.get('last') || { lat: 40.7128, lon: -74.0060, label: 'New York, NY' };
+load(last.lat, last.lon, last.label);
+
+// ================= CÀI APP (PWA) =================
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e));
+}
+let installEvt;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('install').hidden = false; });
+$('install').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('install').hidden = true; };
+addEventListener('appinstalled', () => { $('install').hidden = true; });
+</script>
+</body>
+</html>
