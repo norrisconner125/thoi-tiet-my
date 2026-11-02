@@ -193,6 +193,7 @@ footer a { color: var(--accent); }
       </div>
       <button id="geo" type="button">Vị trí của tôi</button>
       <a class="btn" id="mapLink" href="map.html">Bản đồ cảnh báo</a>
+      <a class="btn" id="map3dLink" href="map3d.html">Bản đồ 3D</a>
       <button id="install" type="button" hidden>Cài app</button>
       <div class="unit" role="group" aria-label="Đơn vị nhiệt độ">
         <button id="uF" type="button" aria-pressed="true">°F</button>
@@ -357,8 +358,8 @@ async function load(lat, lon, label) {
     store.set('last', { lat, lon, label: place });
     render();
     updateMap(+lat, +lon, place, p, alerts.features);
-    const st = p.relativeLocation?.properties?.state;
-    if (st) { $('mapLink').href = 'map.html#' + st; store.set('lastState', st); }
+    const stateCode = p.relativeLocation?.properties?.state;
+    if (stateCode) { $('mapLink').href = 'map.html#' + stateCode; $('map3dLink').href = 'map3d.html#' + stateCode; store.set('lastState', stateCode); }
     loadAFD(p.cwa || p.gridId);
     setStatus(`Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`);
   } catch (e) {
