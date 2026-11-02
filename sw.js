@@ -1,5 +1,5 @@
 // Service worker: cho phép cài app và mở được khi mất mạng (hiện dữ liệu lần tải gần nhất).
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',
@@ -22,7 +22,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // Ảnh nền bản đồ và radar: không lưu (quá nhiều, nhanh cũ)
-  if (/cartocdn|opengeo\.ncep|radar\.weather/.test(url.host)) return;
+  if (/arcgisonline|openstreetmap|opengeo\.ncep|radar\.weather/.test(url.host)) return;
   // Dữ liệu thời tiết: luôn lấy mới, mất mạng thì dùng bản đã lưu
   if (/api\.weather\.gov|nhc\.noaa\.gov|open-meteo/.test(url.host) || url.pathname.includes('/data/')) {
     e.respondWith(fetch(req).then(res => {

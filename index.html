@@ -267,7 +267,7 @@ footer a { color: var(--accent); }
     <pre class="product" id="twoText" hidden></pre>
   </section>
 
-  <footer>Dữ liệu: <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener">National Weather Service API</a> (NOAA) · Radar: NOAA/NCEP MRMS · Bão: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">National Hurricane Center</a> · Tìm địa điểm: Open-Meteo Geocoding · Nền bản đồ: OpenStreetMap/CARTO. Chỉ hỗ trợ lãnh thổ Hoa Kỳ.</footer>
+  <footer>Dữ liệu: <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener">National Weather Service API</a> (NOAA) · Radar: NOAA/NCEP MRMS · Bão: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">National Hurricane Center</a> · Tìm địa điểm: Open-Meteo Geocoding · Nền bản đồ: Esri / OpenStreetMap. Chỉ hỗ trợ lãnh thổ Hoa Kỳ.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -573,11 +573,17 @@ const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 function initMap() {
   if (map || !window.L) return !!map;
   map = L.map('map', { zoomControl: true, worldCopyJump: true });
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`, {
-    maxZoom: 18, subdomains: 'abcd',
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
-  }).addTo(map);
+  // Nền bản đồ không cần API key: Esri xám (sáng/tối theo giao diện) hoặc OpenStreetMap
+  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+  const esriAttr = 'Nền: Esri, HERE, Garmin, &copy; OpenStreetMap';
+  const grayBase = L.tileLayer(`${esri}${dark ? 'World_Dark_Gray_Base' : 'World_Light_Gray_Base'}/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: esriAttr });
+  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' });
   map.createPane('radar'); map.getPane('radar').style.zIndex = 350;
+  // Nhãn tên địa danh nằm trên lớp radar để luôn đọc được
+  map.createPane('labels'); map.getPane('labels').style.zIndex = 450; map.getPane('labels').style.pointerEvents = 'none';
+  const grayLabels = L.tileLayer(`${esri}${dark ? 'World_Dark_Gray_Reference' : 'World_Light_Gray_Reference'}/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, pane: 'labels' });
+  const graySet = L.layerGroup([grayBase, grayLabels]).addTo(map);
+  L.control.layers({ 'Nền xám (Esri)': graySet, 'OpenStreetMap': osm }, null, { position: 'topright' }).addTo(map);
   radarGroup = L.layerGroup(MRMS.map(([ws, layer]) =>
     L.tileLayer.wms(`https://opengeo.ncep.noaa.gov/geoserver/${ws}/${layer}/ows`, {
       layers: layer, format: 'image/png', transparent: true, version: '1.3.0',
