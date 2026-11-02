@@ -28,7 +28,7 @@ jobs:
       - name: Chuẩn bị trang
         run: |
           mkdir -p _site/data
-          cp -r index.html map.html sw.js manifest.webmanifest .nojekyll icons _site/
+          cp -r index.html map.html map3d.html noaa-common.js sw.js manifest.webmanifest .nojekyll icons _site/
           cp data/* _site/data/ 2>/dev/null || true
           cp _noaa/* _site/data/ 2>/dev/null || true
           ls -la _site _site/data

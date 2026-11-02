@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bản Đồ 3D Thời Tiết</title>
+<meta name="description" content="Bản đồ 3D kiểu nhà đài: cảnh báo NWS dựng khối, cột số liệu quan trắc, radar trên địa hình.">
+<meta name="theme-color" content="#0b1726">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+/* Layout: bản đồ 3D toàn màn hình kiểu phòng thu; thanh điều khiển trên cùng, nhãn đài góc trái,
+   thanh chữ (lower third) cạnh dưới, chú giải góc phải. Giao diện tối cố định như màn hình TV. */
+:root {
+  --bg: #0b1726; --panel: rgb(11 23 38 / .86); --line: rgb(255 255 255 / .14); --fg: #eef3f9; --muted: #9fb2c8;
+  --accent: #3d8bfd; --live: #e53935;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--f-body); overflow: hidden; }
+#map { position: absolute; inset: 0; }
+
+.bar {
+  position: absolute; z-index: 5; top: 0; left: 0; right: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgb(6 14 24 / .92), rgb(6 14 24 / .65) 70%, transparent);
+}
+.bar a { color: #9cc4ff; text-decoration: none; font-weight: 500; white-space: nowrap; }
+.bar h1 { margin: 0; font: 800 22px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.bar .grow { flex: 1; }
+select, button {
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / .08);
+  color: var(--fg); font: 500 13px var(--f-body); cursor: pointer;
+}
+select option { background: #13243a; }
+button:hover, select:hover { border-color: #9cc4ff; }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+button.play[aria-pressed="true"] { background: var(--live); border-color: var(--live); }
+:focus-visible { outline: 2px solid #9cc4ff; outline-offset: 2px; }
+.chk { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.chk input { accent-color: var(--accent); }
+.more { display: contents; }
+
+/* Nhãn đài */
+.bug { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: 74px; display: flex; align-items: stretch; font: 700 13px/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 2px 10px rgb(0 0 0 / .4); }
+.bug span { padding: 6px 9px; }
+.bug .a { background: var(--live); }
+.bug .b { background: rgb(6 14 24 / .9); font-family: var(--f-data); font-weight: 500; letter-spacing: 0; }
+.status { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: 106px; font-size: 12px; color: var(--muted); text-shadow: 0 1px 3px #000; max-width: 70vw; }
+
+/* Thanh chữ phía dưới (lower third) */
+.l3 {
+  position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+  width: min(640px, calc(100vw - 32px)); display: grid; grid-template-columns: 10px minmax(0, 1fr);
+  background: var(--panel); border-radius: 6px; overflow: hidden; box-shadow: 0 6px 24px rgb(0 0 0 / .5);
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), opacity .45s;
+}
+.l3[hidden] { display: grid !important; transform: translateY(24px); opacity: 0; pointer-events: none; }
+.l3 .stripe { background: var(--c, var(--live)); }
+.l3 .body { padding: 10px 14px 12px; min-width: 0; }
+.l3 .kicker { font: 600 12px var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.l3 .title { font: 800 clamp(24px, 4.2vw, 36px)/1.02 var(--f-display); text-transform: uppercase; letter-spacing: .01em; margin: 2px 0 4px; text-wrap: balance; }
+.l3 .area { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.l3 .time { font: 500 12px var(--f-data); color: var(--muted); margin-top: 4px; }
+
+/* Chú giải */
+.legend {
+  position: absolute; z-index: 4; right: max(16px, env(safe-area-inset-right)); bottom: max(28px, calc(env(safe-area-inset-bottom) + 16px));
+  width: 250px; max-height: 46vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12px;
+}
+.legend h3 { margin: 0 0 6px; font: 700 13px var(--f-display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.legend h3 + h3, .legend .sec { margin-top: 10px; }
+.legend .row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 2px 0; cursor: pointer; }
+.legend .row:hover { color: #fff; text-decoration: underline; }
+.legend .sw { width: 12px; height: 12px; border-radius: 2px; }
+.legend .n { font-family: var(--f-data); color: var(--muted); }
+.scale { display: flex; height: 10px; border-radius: 3px; overflow: hidden; }
+.scale i { flex: 1; }
+.scale-lab { display: flex; justify-content: space-between; font: 11px var(--f-data); color: var(--muted); margin-top: 2px; }
+.legend .note { color: var(--muted); margin: 6px 0 0; }
+.legend-toggle { display: none; }
+@media (max-width: 760px) {
+  .bar h1 { font-size: 18px; }
+  .legend { width: auto; left: max(16px, env(safe-area-inset-left)); bottom: auto; top: 136px; max-height: 40vh; }
+  .legend.collapsed > :not(.legend-toggle) { display: none; }
+  .legend-toggle { display: block; width: 100%; margin-bottom: 6px; }
+  .bug { top: auto; bottom: calc(max(28px, calc(env(safe-area-inset-bottom) + 16px)) + 150px); }
+  .status { top: 112px; }
+}
+
+/* Nhãn số trên cột */
+.val { font: 600 11px/1 var(--f-data); padding: 2px 4px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / .45); white-space: nowrap; pointer-events: none; }
+.maplibregl-popup-content { background: #fff; color: #142233; font: 13px/1.4 var(--f-body); max-height: 50vh; overflow: auto; }
+.pop h4 { margin: 0 0 4px; font-size: 14px; }
+.pop .a { border-left: 4px solid; padding: 2px 0 6px 8px; margin: 6px 0; }
+.pop small { color: #555; }
+.pop details p { white-space: pre-line; max-height: 160px; overflow: auto; margin: 4px 0; font-size: 12px; }
+.pop table { border-collapse: collapse; font-size: 12px; }
+.pop td { padding: 1px 8px 1px 0; }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .l3 { transition: none; } }
+</style>
+</head>
+<body>
+<div id="map" role="region" aria-label="Bản đồ 3D thời tiết"></div>
+
+<header class="bar">
+  <a href="./">← Thời Tiết Mỹ</a>
+  <a href="map.html" id="link2d">Bản đồ 2D</a>
+  <h1>Bản đồ 3D</h1>
+  <span class="grow"></span>
+  <select id="region" aria-label="Chọn khu vực"></select>
+  <select id="metric" aria-label="Cột số liệu">
+    <option value="t">Cột: Nhiệt độ</option>
+    <option value="td">Cột: Điểm sương</option>
+    <option value="wspd">Cột: Gió</option>
+    <option value="wgst">Cột: Gió giật</option>
+    <option value="vis">Cột: Tầm nhìn</option>
+    <option value="altim">Cột: Áp suất</option>
+    <option value="none">Không hiện cột</option>
+  </select>
+  <select id="basemap" aria-label="Nền bản đồ">
+    <option value="sat">Nền: Vệ tinh</option>
+    <option value="gray">Nền: Bản đồ</option>
+  </select>
+  <label class="chk"><input type="checkbox" id="lyrAlerts" checked> Cảnh báo</label>
+  <label class="chk"><input type="checkbox" id="lyrRadar"> Radar</label>
+  <label class="chk"><input type="checkbox" id="lyrTerrain" checked> Địa hình</label>
+  <label class="chk">Độ cao khối <input type="range" id="scale" min="0.4" max="3" step="0.1" value="1" aria-label="Độ cao khối"></label>
+  <button type="button" id="orbit" aria-pressed="false">Xoay</button>
+  <button type="button" id="tour" class="play" aria-pressed="false">▶ Dẫn chương trình</button>
+</header>
+
+<div class="bug" aria-hidden="true"><span class="a">NWS · NOAA</span><span class="b" id="clock"></span></div>
+<div class="status" id="status" role="status"></div>
+
+<section class="l3" id="l3" hidden aria-live="polite">
+  <div class="stripe"></div>
+  <div class="body">
+    <div class="kicker" id="l3k"></div>
+    <div class="title" id="l3t"></div>
+    <div class="area" id="l3a"></div>
+    <div class="time" id="l3m"></div>
+  </div>
+</section>
+
+<aside class="legend" id="legend">
+  <button type="button" class="legend-toggle" id="legendToggle">Chú giải</button>
+  <div id="legendBody"></div>
+</aside>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="noaa-common.js"></script>
+<script>
+// ================= BẢN ĐỒ 3D =================
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+const MRMS = ['conus', 'alaska', 'hawaii', 'carib', 'guam'];
+const wms = ws => `https://opengeo.ncep.noaa.gov/geoserver/${ws}/${ws}_bref_qcd/ows?service=WMS&request=GetMap&version=1.3.0&layers=${ws}_bref_qcd&styles=&format=image/png&transparent=true&width=256&height=256&crs=EPSG:3857&bbox={bbox-epsg-3857}`;
+const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const EMPTY = { type: 'FeatureCollection', features: [] };
+// Hệ số phóng chiều cao theo mức zoom: nhìn toàn quốc ×6, nhìn một bang ×2.5, nhìn gần ×1
+const ZOOMK = v => ['interpolate', ['linear'], ['zoom'], 3, ['*', 6, v], 6, ['*', 2.5, v], 9, v];
+
+const setStatus = m => { $('status').textContent = m || ''; };
+const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' (giờ máy bạn)'; };
+tick(); setInterval(tick, 15000);
+
+if (!window.maplibregl || !maplibregl.supported?.({ failIfMajorPerformanceCaveat: false }) && !document.createElement('canvas').getContext('webgl2')) {
+  $('map').innerHTML = '<div class="nogl">Trình duyệt hoặc máy này không hỗ trợ WebGL nên không hiển thị được bản đồ 3D. Hãy dùng <a href="map.html" style="color:#9cc4ff">bản đồ 2D</a>.</div>';
+  throw new Error('Không có WebGL');
+}
+
+const map = new maplibregl.Map({
+  container: 'map',
+  center: [-97, 38.5], zoom: 3.4, pitch: 50, bearing: -12, maxPitch: 80,
+  attributionControl: { compact: true },
+  style: {
+    version: 8,
+    sources: {
+      sat: { type: 'raster', tiles: [ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 18, attribution: 'Ảnh vệ tinh: Esri, Maxar, Earthstar Geographics' },
+      gray: { type: 'raster', tiles: [ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 16, attribution: 'Nền: Esri, HERE, Garmin, © OpenStreetMap' },
+      labels: { type: 'raster', tiles: [ESRI + 'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 16 },
+      dem: { type: 'raster-dem', tiles: [DEM], encoding: 'terrarium', tileSize: 256, maxzoom: 14, attribution: 'Độ cao: AWS Terrain Tiles' },
+      demHill: { type: 'raster-dem', tiles: [DEM], encoding: 'terrarium', tileSize: 256, maxzoom: 14 },
+      ...Object.fromEntries(MRMS.map(ws => [`radar-${ws}`, { type: 'raster', tiles: [wms(ws)], tileSize: 256, ...(ws === 'conus' ? { attribution: 'Radar: NOAA/NCEP MRMS' } : {}) }])),
+      alerts: { type: 'geojson', data: EMPTY, attribution: 'Cảnh báo: NWS' },
+      cols: { type: 'geojson', data: EMPTY, attribution: 'Số liệu: NOAA/NWS AWC (METAR)' }
+    },
+    layers: [
+      { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.25, 'raster-brightness-max': 0.85 } },
+      { id: 'gray', type: 'raster', source: 'gray', layout: { visibility: 'none' } },
+      { id: 'hill', type: 'hillshade', source: 'demHill', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#0b1220' } },
+      ...MRMS.map(ws => ({ id: `radar-${ws}`, type: 'raster', source: `radar-${ws}`, layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.7 } })),
+      { id: 'alerts-line', type: 'line', source: 'alerts', paint: { 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': 0.9 } },
+      { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.9 } },
+      { id: 'alerts-3d', type: 'fill-extrusion', source: 'alerts', paint: {
+          'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-base': ZOOMK(['get', 'base']), 'fill-extrusion-height': ZOOMK(['get', 'top']),
+          'fill-extrusion-opacity': 0.62, 'fill-extrusion-vertical-gradient': true } },
+      { id: 'cols-3d', type: 'fill-extrusion', source: 'cols', paint: {
+          'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-base': 0, 'fill-extrusion-height': ZOOMK(['get', 'h']), 'fill-extrusion-opacity': 0.92 } }
+    ],
+    terrain: { source: 'dem', exaggeration: 1.5 }
+  }
+});
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+map.on('load', () => {
+  map.setSky?.({ 'sky-color': '#0d2440', 'horizon-color': '#3b6a9a', 'fog-color': '#0b1726', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.2 });
+});
+map.on('error', e => console.warn('Bản đồ:', e?.error?.message || e));
+
+// ---------- Trạng thái ----------
+let region = 'US', gen = 0, alerts = [], obs = [], scaleK = 1;
+let metric = store.get('map3dMetric') || 't';
+
+// ---------- Cảnh báo dựng khối ----------
+// Chiều cao (mét) theo mức nguy hiểm: cảnh báo hàng đầu cao nhất, rồi Warning, Watch, Advisory
+// (chiều cao gốc ở mức zoom gần; khi nhìn xa, khối được phóng cao thêm để vẫn thấy rõ — xem ZOOMK)
+function alertHeight(a) {
+  if (a.rank < 100) return 9000 - a.rank * 150;
+  return a.rank === 100 ? 5500 : a.rank === 200 ? 3800 : a.rank === 300 ? 2500 : 1800;
+}
+function rebuildAlerts() {
+  const feats = [], stack = new Map();
+  for (const a of alerts) {
+    const h = alertHeight(a) * scaleK;
+    for (const { key, g } of a.geoms) {
+      // Nhiều cảnh báo trên cùng một vùng: xếp chồng thay vì đè lên nhau
+      const base = key ? (stack.get(key) || 0) : 0;
+      if (key) stack.set(key, base + h);
+      feats.push({ type: 'Feature', geometry: g, properties: { id: a.id, color: a.color, base, top: base + h } });
+    }
+  }
+  map.getSource('alerts')?.setData({ type: 'FeatureCollection', features: feats });
+}
+async function loadAlerts() {
+  const my = ++gen;
+  setStatus('Đang tải cảnh báo NWS…');
+  const url = region === 'US' ? `${NWS}/alerts/active?status=actual` : `${NWS}/alerts/active?status=actual&area=${region}`;
+  let data;
+  try { data = await nws(url); } catch (e) { setStatus('Không tải được cảnh báo NWS (' + e.message + ').'); return; }
+  if (my !== gen) return;
+  alerts = data.features.map(f => ({ id: f.id, p: f.properties, rank: rank(f.properties.event), color: eventColor(f.properties.event), geoms: f.geometry ? [{ key: null, g: f.geometry }] : [] }))
+    .sort((a, b) => a.rank - b.rank);
+  rebuildAlerts(); renderLegend();
+  setStatus(region === 'US' ? 'Toàn quốc: hiện các cảnh báo có đa giác riêng. Chọn một bang để thấy đủ mọi vùng cảnh báo.' : '');
+  if (region === 'US') return;
+  const jobs = [];
+  alerts.forEach(a => { if (!a.geoms.length) (a.p.affectedZones || []).forEach(z => jobs.push([a, z])); });
+  let done = 0;
+  await pool(jobs, 6, async ([a, z]) => {
+    const g = await getZone(z);
+    if (my !== gen) return;
+    if (g) a.geoms.push({ key: z, g });
+    done++;
+    if (done % 8 === 0 || done === jobs.length) { rebuildAlerts(); setStatus(done < jobs.length ? `Đang dựng vùng cảnh báo ${done}/${jobs.length}…` : ''); }
+  });
+}
+
+// ---------- Cột số liệu 3D ----------
+function hexagon(lon, lat, rKm) {
+  const ring = [], kLat = rKm / 111.32, kLon = rKm / (111.32 * Math.cos(lat * Math.PI / 180));
+  for (let i = 0; i <= 6; i++) { const t = (i % 6) * Math.PI / 3; ring.push([lon + kLon * Math.cos(t), lat + kLat * Math.sin(t)]); }
+  return { type: 'Polygon', coordinates: [ring] };
+}
+let valMarkers = [];
+function rebuildCols() {
+  valMarkers.forEach(m => m.remove()); valMarkers = [];
+  if (metric === 'none') { map.getSource('cols')?.setData(EMPTY); renderLegend(); return; }
+  const M = METRICS[metric], lo = M.stops[0][0], hi = M.stops[M.stops.length - 1][0];
+  const r = region === 'US' ? 20 : 9;
+  const feats = obs.filter(o => M.get(o) != null).map(o => {
+    const v = M.get(o), k = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    // Tầm nhìn và áp suất thấp mới đáng chú ý: cột cao khi giá trị nhỏ
+    const kk = metric === 'vis' || metric === 'altim' ? 1 - k : k;
+    return { type: 'Feature', geometry: hexagon(o.lon, o.lat, r), properties: { id: o.id, color: colorAt(M.stops, v), h: (800 + kk * (region === 'US' ? 12000 : 9000)) * scaleK } };
+  });
+  map.getSource('cols')?.setData({ type: 'FeatureCollection', features: feats });
+  renderLabels();
+  renderLegend();
+}
+// Nhãn giá trị (thưa dần để không chồng chéo), chỉ khi đã zoom vào
+function renderLabels() {
+  valMarkers.forEach(m => m.remove()); valMarkers = [];
+  if (metric === 'none' || map.getZoom() < 5.2) return;
+  const M = METRICS[metric], used = new Set(), cell = 54, b = map.getBounds();
+  for (const o of obs) {
+    const v = M.get(o); if (v == null || !b.contains([o.lon, o.lat])) continue;
+    const p = map.project([o.lon, o.lat]), key = Math.floor(p.x / cell) + ':' + Math.floor(p.y / (cell * .6));
+    if (used.has(key)) continue; used.add(key);
+    const el = document.createElement('div'), bg = colorAt(M.stops, v);
+    el.className = 'val'; el.style.background = bg; el.style.color = textOn(bg); el.textContent = M.fmt(v);
+    valMarkers.push(new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -4] }).setLngLat([o.lon, o.lat]).addTo(map));
+    if (valMarkers.length > 140) break;
+  }
+}
+async function loadObs() {
+  const r = await fetchObs(regionBBox(region));
+  obs = r.list;
+  rebuildCols();
+}
+
+// ---------- Chú giải ----------
+function renderLegend() {
+  const groups = new Map();
+  alerts.forEach(a => groups.set(a.p.event, (groups.get(a.p.event) || 0) + 1));
+  let html = `<h3>Cảnh báo (${alerts.length})</h3>`;
+  html += groups.size ? [...groups].map(([ev, n]) => `<div class="row" data-ev="${esc(ev)}" title="${esc(ev)}"><span class="sw" style="background:${eventColor(ev)}"></span><span>${esc(eventVi(ev))}</span><span class="n">${n}</span></div>`).join('')
+    : `<p class="note">Không có cảnh báo nào ${region === 'US' ? 'trên toàn quốc' : 'tại ' + STATES[region][0]}.</p>`;
+  html += '<p class="note">Khối càng cao, cảnh báo càng nguy hiểm. Bấm vào khối để xem chi tiết.</p>';
+  if (metric !== 'none') {
+    const M = METRICS[metric], lo = M.stops[0][0], hi = M.stops[M.stops.length - 1][0];
+    html += `<h3 class="sec">${M.name} (${M.unit})</h3><div class="scale">${Array.from({ length: 20 }, (_, i) => `<i style="background:${colorAt(M.stops, lo + (hi - lo) * i / 19)}"></i>`).join('')}</div>
+      <div class="scale-lab"><span>${lo}</span><span>${hi}</span></div>
+      <p class="note">${obs.length} trạm quan trắc. ${metric === 'vis' || metric === 'altim' ? 'Cột cao = giá trị thấp.' : 'Cột cao = giá trị cao.'}</p>`;
+  }
+  $('legendBody').innerHTML = html;
+}
+$('legendBody').addEventListener('click', e => {
+  const r = e.target.closest('[data-ev]'); if (!r) return;
+  const a = alerts.find(x => x.p.event === r.dataset.ev && x.geoms.length);
+  if (a) { stopTour(); flyToAlert(a, 0); showL3(a); }
+});
+$('legendToggle').onclick = () => $('legend').classList.toggle('collapsed');
+if (matchMedia('(max-width: 760px)').matches) $('legend').classList.add('collapsed');
+
+// ---------- Camera & thanh chữ ----------
+function geomBounds(list) {
+  let w = 180, s = 90, e = -180, n = -90;
+  const walk = c => { if (typeof c[0] === 'number') { w = Math.min(w, c[0]); e = Math.max(e, c[0]); s = Math.min(s, c[1]); n = Math.max(n, c[1]); } else c.forEach(walk); };
+  list.forEach(({ g }) => g.type === 'GeometryCollection' ? g.geometries.forEach(x => walk(x.coordinates)) : walk(g.coordinates));
+  return w <= e ? [[w, s], [e, n]] : null;
+}
+function flyToAlert(a, i) {
+  const b = geomBounds(a.geoms); if (!b) return false;
+  const cam = map.cameraForBounds(b, { padding: { top: 140, bottom: 220, left: 60, right: 60 }, maxZoom: 9.5 }) || {};
+  map.flyTo({ center: cam.center, zoom: Math.min((cam.zoom ?? 7) - 0.3, 9), pitch: 62, bearing: -30 + (i * 47) % 90, duration: 4200, essential: true, curve: 1.6 });
+  return true;
+}
+function showL3(a) {
+  $('l3').style.setProperty('--c', a.color);
+  $('l3k').textContent = `${a.p.senderName || 'NWS'} · ${a.p.event}`;
+  $('l3t').textContent = eventVi(a.p.event);
+  $('l3a').textContent = a.p.areaDesc || '';
+  const until = a.p.ends || a.p.expires;
+  $('l3m').textContent = (a.p.onset ? 'Từ ' + fmtTime(a.p.onset) + ' · ' : '') + (until ? 'Hiệu lực đến ' + fmtTime(until) : '');
+  $('l3').hidden = false;
+}
+const hideL3 = () => { $('l3').hidden = true; };
+
+// Chế độ dẫn chương trình: bay lần lượt tới các cảnh báo nguy hiểm nhất
+let touring = false, tourTimer;
+async function startTour() {
+  const list = alerts.filter(a => a.geoms.length && a.rank < 300).slice(0, 10);
+  if (!list.length) { setStatus(region === 'US' ? 'Chưa có cảnh báo có đa giác để dẫn. Hãy chọn một bang.' : 'Không có cảnh báo đáng chú ý để dẫn chương trình.'); return; }
+  touring = true; $('tour').setAttribute('aria-pressed', 'true'); $('tour').textContent = '■ Dừng';
+  stopOrbit();
+  for (let i = 0; touring; i = (i + 1) % list.length) {
+    if (!flyToAlert(list[i], i)) continue;
+    showL3(list[i]);
+    await new Promise(res => { tourTimer = setTimeout(res, 9000); });
+    if (i === list.length - 1 && touring) { hideL3(); fitRegion(true); await new Promise(res => { tourTimer = setTimeout(res, 5000); }); }
+  }
+}
+function stopTour() {
+  touring = false; clearTimeout(tourTimer);
+  $('tour').setAttribute('aria-pressed', 'false'); $('tour').textContent = '▶ Dẫn chương trình';
+}
+$('tour').onclick = () => touring ? (stopTour(), hideL3()) : startTour();
+
+// Xoay camera chậm quanh khu vực
+let orbiting = false, raf;
+function orbitStep() { if (!orbiting) return; map.setBearing(map.getBearing() + 0.08); raf = requestAnimationFrame(orbitStep); }
+function stopOrbit() { orbiting = false; cancelAnimationFrame(raf); $('orbit').setAttribute('aria-pressed', 'false'); }
+$('orbit').onclick = () => { if (orbiting) return stopOrbit(); stopTour(); orbiting = true; $('orbit').setAttribute('aria-pressed', 'true'); orbitStep(); };
+map.on('dragstart', () => { stopOrbit(); });
+
+// ---------- Bấm vào khối ----------
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${m} phút trước` : `${Math.floor(m / 60)} giờ trước`; };
+map.on('click', e => {
+  const hits = map.queryRenderedFeatures(e.point, { layers: ['alerts-3d', 'cols-3d'] });
+  const ids = [...new Set(hits.filter(f => f.layer.id === 'alerts-3d').map(f => f.properties.id))];
+  const list = ids.map(id => alerts.find(a => a.id === id)).filter(Boolean);
+  let html = '';
+  if (list.length) html = `<div class="pop"><h4>${list.length} cảnh báo</h4>${list.map(a => `<div class="a" style="border-color:${a.color}"><b>${esc(eventVi(a.p.event))}</b> <small>(${esc(a.p.event)})</small><br>
+      <small>${esc(a.p.areaDesc || '').slice(0, 160)}<br>${a.p.ends || a.p.expires ? 'Đến ' + fmtTime(a.p.ends || a.p.expires) : ''}</small>
+      <details><summary>Chi tiết (tiếng Anh)</summary><p><b>${esc(a.p.headline || '')}</b>\n\n${esc(a.p.description || '')}${a.p.instruction ? '\n\nHƯỚNG DẪN: ' + esc(a.p.instruction) : ''}</p></details></div>`).join('')}</div>`;
+  const col = hits.find(f => f.layer.id === 'cols-3d');
+  if (!html && col) {
+    const o = obs.find(x => x.id === col.properties.id);
+    if (o) {
+      const T = METRICS.t;
+      html = `<div class="pop"><h4>${esc(o.id)}${o.name ? ' · ' + esc(o.name) : ''}</h4><small>Quan trắc ${ago(o.time)}</small><table>
+        <tr><td>Nhiệt độ</td><td><b>${o.t != null ? T.fmt(T.get(o)) + unit : '—'}</b></td></tr>
+        <tr><td>Điểm sương</td><td><b>${o.td != null ? METRICS.td.fmt(METRICS.td.get(o)) + unit : '—'}</b></td></tr>
+        <tr><td>Gió</td><td><b>${o.wspd != null ? Math.round(o.wspd * 1.15078) + ' mph' + (o.wgst ? ', giật ' + Math.round(o.wgst * 1.15078) : '') : '—'}</b></td></tr>
+        <tr><td>Tầm nhìn</td><td><b>${o.vis != null ? METRICS.vis.fmt(o.vis) + ' dặm' : '—'}</b></td></tr>
+        <tr><td>Áp suất</td><td><b>${o.altim != null ? o.altim.toFixed(2) + ' inHg' : '—'}</b></td></tr>
+        <tr><td>Hiện tượng</td><td><b>${esc(o.wx || '—')}</b></td></tr></table></div>`;
+    }
+  }
+  if (html) new maplibregl.Popup({ maxWidth: '330px' }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+});
+map.on('mousemove', e => {
+  map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ['alerts-3d', 'cols-3d'] }).length ? 'pointer' : '';
+});
+
+// ---------- Điều khiển ----------
+const sel = $('region');
+sel.innerHTML = '<option value="US">Toàn nước Mỹ</option>' + Object.entries(STATES).sort((a, b) => a[1][0].localeCompare(b[1][0])).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('');
+function fitRegion(animate) {
+  const opts = { pitch: 55, bearing: -15, padding: { top: 120, bottom: 160, left: 40, right: 40 }, duration: animate ? 3000 : 0 };
+  if (region === 'US') map.fitBounds([[-125, 24], [-66.5, 49.5]], opts);
+  else { const s = STATES[region]; map.fitBounds([[s[2], s[1]], [s[4], s[3]]], opts); }
+}
+function setRegion(r) {
+  stopTour(); hideL3();
+  region = STATES[r] ? r : 'US';
+  sel.value = region;
+  if (location.hash.slice(1) !== region) history.replaceState(null, '', '#' + region);
+  $('link2d').href = 'map.html#' + region;
+  fitRegion(map.loaded());
+  loadAlerts(); loadObs();
+}
+sel.onchange = () => setRegion(sel.value);
+$('metric').value = metric;
+$('metric').onchange = e => { metric = e.target.value; store.set('map3dMetric', metric); rebuildCols(); };
+$('basemap').onchange = e => { map.setLayoutProperty('sat', 'visibility', e.target.value === 'sat' ? 'visible' : 'none'); map.setLayoutProperty('gray', 'visibility', e.target.value === 'gray' ? 'visible' : 'none'); };
+$('lyrAlerts').onchange = e => ['alerts-3d', 'alerts-line'].forEach(l => map.setLayoutProperty(l, 'visibility', e.target.checked ? 'visible' : 'none'));
+$('lyrRadar').onchange = e => MRMS.forEach(ws => map.setLayoutProperty(`radar-${ws}`, 'visibility', e.target.checked ? 'visible' : 'none'));
+$('lyrTerrain').onchange = e => { map.setTerrain(e.target.checked ? { source: 'dem', exaggeration: 1.5 } : null); map.setLayoutProperty('hill', 'visibility', e.target.checked ? 'visible' : 'none'); };
+$('scale').oninput = e => { scaleK = +e.target.value; rebuildAlerts(); rebuildCols(); };
+let mt; map.on('moveend', () => { clearTimeout(mt); mt = setTimeout(renderLabels, 150); });
+addEventListener('hashchange', () => { const h = location.hash.slice(1).toUpperCase(); if (h !== region) setRegion(h); });
+
+// Tự làm mới: cảnh báo mỗi 3 phút, số liệu mỗi 10 phút, ảnh radar mỗi 5 phút
+setInterval(() => { if (!touring) loadAlerts(); }, 3 * 60 * 1000);
+setInterval(loadObs, 10 * 60 * 1000);
+setInterval(() => MRMS.forEach(ws => map.getSource(`radar-${ws}`)?.setTiles([wms(ws) + '&_t=' + Date.now()])), 5 * 60 * 1000);
+
+map.once('load', () => {
+  const h = location.hash.slice(1).toUpperCase(), last = store.get('lastState');
+  setRegion(STATES[h] ? h : h === 'US' ? 'US' : (STATES[last] ? last : 'US'));
+});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

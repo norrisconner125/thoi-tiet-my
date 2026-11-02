@@ -9,6 +9,9 @@ App thời tiết cho nước Mỹ, dữ liệu chính thức từ NOAA:
 - Theo dõi bão từ National Hurricane Center + Triển vọng thời tiết nhiệt đới
 - **Bản đồ cảnh báo** (`map.html`): mọi cảnh báo hiện hành của NWS theo bang/toàn quốc, tô màu theo bảng màu chính thức,
   kèm số liệu quan trắc METAR (nhiệt độ, điểm sương, gió, gió giật, tầm nhìn, áp suất) của hơn 2.000 trạm
+- **Bản đồ 3D kiểu nhà đài** (`map3d.html`, MapLibre GL): địa hình thật, ảnh vệ tinh, vùng cảnh báo dựng khối
+  (càng nguy hiểm càng cao, xếp chồng khi trùng vùng), cột số liệu 3D, radar phủ địa hình,
+  chế độ "Dẫn chương trình" tự bay tới từng cảnh báo kèm thanh chữ như trên TV
 - Cài lên điện thoại/máy tính như app (PWA), mở được khi mất mạng
 
 Không cần API key, không cần server riêng.

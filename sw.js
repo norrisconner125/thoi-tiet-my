@@ -1,10 +1,12 @@
 // Service worker: cho phép cài app và mở được khi mất mạng (hiện dữ liệu lần tải gần nhất).
-const VERSION = 'v5';
+const VERSION = 'v6';
 const SHELL = [
-  './', './index.html', './map.html', './manifest.webmanifest',
+  './', './index.html', './map.html', './map3d.html', './noaa-common.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
+  'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js',
+  'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'
 ];
 self.addEventListener('install', e => {
   // Lưu từng file riêng: một file lỗi (vd CDN chậm) không làm hỏng cả bước cài
@@ -22,7 +24,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // Ảnh nền bản đồ và radar: không lưu (quá nhiều, nhanh cũ)
-  if (/arcgisonline|openstreetmap|opengeo\.ncep|radar\.weather/.test(url.host)) return;
+  if (/arcgisonline|openstreetmap|amazonaws|opengeo\.ncep|radar\.weather/.test(url.host)) return;
   // Dữ liệu thời tiết: luôn lấy mới, mất mạng thì dùng bản đã lưu
   if (/api\.weather\.gov|nhc\.noaa\.gov|aviationweather|open-meteo/.test(url.host) || url.pathname.includes('/data/')) {
     e.respondWith(fetch(req).then(res => {
