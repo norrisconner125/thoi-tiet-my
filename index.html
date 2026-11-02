@@ -74,7 +74,8 @@ button {
   padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
   color: var(--fg); font: 500 14px var(--f-body); cursor: pointer;
 }
-button:hover { border-color: var(--accent); }
+button:hover, a.btn:hover { border-color: var(--accent); }
+a.btn { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: 500 14px var(--f-body); text-decoration: none; }
 .unit { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .unit button { border: 0; border-radius: 0; padding: 9px 11px; font-family: var(--f-data); }
 .unit button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
@@ -191,6 +192,7 @@ footer a { color: var(--accent); }
         <ul class="suggest" id="suggest" role="listbox" hidden></ul>
       </div>
       <button id="geo" type="button">Vị trí của tôi</button>
+      <a class="btn" id="mapLink" href="map.html">Bản đồ cảnh báo</a>
       <button id="install" type="button" hidden>Cài app</button>
       <div class="unit" role="group" aria-label="Đơn vị nhiệt độ">
         <button id="uF" type="button" aria-pressed="true">°F</button>
@@ -355,6 +357,8 @@ async function load(lat, lon, label) {
     store.set('last', { lat, lon, label: place });
     render();
     updateMap(+lat, +lon, place, p, alerts.features);
+    const st = p.relativeLocation?.properties?.state;
+    if (st) { $('mapLink').href = 'map.html#' + st; store.set('lastState', st); }
     loadAFD(p.cwa || p.gridId);
     setStatus(`Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`);
   } catch (e) {

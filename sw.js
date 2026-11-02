@@ -1,7 +1,7 @@
 // Service worker: cho phép cài app và mở được khi mất mạng (hiện dữ liệu lần tải gần nhất).
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest',
+  './', './index.html', './map.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
@@ -24,7 +24,7 @@ self.addEventListener('fetch', e => {
   // Ảnh nền bản đồ và radar: không lưu (quá nhiều, nhanh cũ)
   if (/arcgisonline|openstreetmap|opengeo\.ncep|radar\.weather/.test(url.host)) return;
   // Dữ liệu thời tiết: luôn lấy mới, mất mạng thì dùng bản đã lưu
-  if (/api\.weather\.gov|nhc\.noaa\.gov|open-meteo/.test(url.host) || url.pathname.includes('/data/')) {
+  if (/api\.weather\.gov|nhc\.noaa\.gov|aviationweather|open-meteo/.test(url.host) || url.pathname.includes('/data/')) {
     e.respondWith(fetch(req).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open('data-' + VERSION).then(c => c.put(req, copy)); }
       return res;

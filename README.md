@@ -7,6 +7,8 @@ App thời tiết cho nước Mỹ, dữ liệu chính thức từ NOAA:
 - Bản đồ radar (NOAA/NCEP MRMS) dùng Leaflet
 - Bản thảo luận dự báo (Area Forecast Discussion) của văn phòng NWS
 - Theo dõi bão từ National Hurricane Center + Triển vọng thời tiết nhiệt đới
+- **Bản đồ cảnh báo** (`map.html`): mọi cảnh báo hiện hành của NWS theo bang/toàn quốc, tô màu theo bảng màu chính thức,
+  kèm số liệu quan trắc METAR (nhiệt độ, điểm sương, gió, gió giật, tầm nhìn, áp suất) của hơn 2.000 trạm
 - Cài lên điện thoại/máy tính như app (PWA), mở được khi mất mạng
 
 Không cần API key, không cần server riêng.
@@ -18,10 +20,10 @@ Không cần API key, không cần server riêng.
 3. Trong repo vừa tạo, bấm **uploading an existing file**, kéo **toàn bộ nội dung** thư mục này vào
    (gồm `index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll`, thư mục `icons`, `data`, `.github`), rồi bấm **Commit changes**.
    - Lưu ý: thư mục `.github` bắt đầu bằng dấu chấm nên có thể bị ẩn. Trên macOS bấm `Cmd+Shift+.` để hiện, trên Windows bật "Hidden items".
-4. Vào **Settings → Pages**. Ở mục **Source** chọn **Deploy from a branch**, branch **main**, thư mục **/ (root)**, bấm **Save**.
-5. Vào **Settings → Actions → General → Workflow permissions**, chọn **Read and write permissions**, bấm **Save**.
-6. Vào tab **Actions**, chọn workflow **Cập nhật bão NHC**, bấm **Run workflow** để lấy dữ liệu bão lần đầu.
-7. Sau 1–2 phút, app có tại: `https://<tên-tài-khoản>.github.io/thoi-tiet-my/`
+4. Vào **Settings → Pages**. Ở mục **Source** chọn **GitHub Actions**.
+5. Vào tab **Actions**, chọn workflow **Triển khai app**, bấm **Run workflow**.
+   Workflow này đăng app và tải dữ liệu NOAA mới (bão NHC, quan trắc METAR) mỗi 30 phút.
+6. Sau 1–2 phút, app có tại: `https://<tên-tài-khoản>.github.io/thoi-tiet-my/`
 
 ## Cài lên điện thoại
 
@@ -39,7 +41,9 @@ rồi mở http://localhost:8000
 ## Ghi chú
 
 - Dữ liệu NWS chỉ phủ lãnh thổ Hoa Kỳ.
-- Workflow `.github/workflows/nhc-storms.yml` tải danh sách bão của NHC mỗi 30 phút vào `data/CurrentStorms.json`,
-  vì trình duyệt có thể bị chặn khi gọi thẳng nhc.noaa.gov. App luôn thử gọi thẳng trước, lỗi mới dùng bản sao này.
+- Workflow `.github/workflows/deploy.yml` chạy `scripts/fetch_noaa.py` để tạo `data/CurrentStorms.json` và `data/metars-us.json`
+  mỗi 30 phút (không commit vào repo), vì trình duyệt có thể bị chặn khi gọi thẳng NHC/AWC.
+  App luôn thử gọi thẳng trước, lỗi mới dùng bản sao này.
+- Bản đồ cảnh báo lưu hình dạng các vùng NWS trong trình duyệt 30 ngày, nên lần đầu xem một bang sẽ chậm hơn các lần sau.
 - GitHub có thể tự tắt workflow theo lịch nếu repo không có hoạt động trong 60 ngày; khi đó vào tab Actions bấm **Enable workflow**.
 - Muốn cập nhật app sau khi sửa: tải file mới lên repo, rồi tăng `VERSION` trong `sw.js` (ví dụ `v3` → `v4`) để điện thoại nhận bản mới.

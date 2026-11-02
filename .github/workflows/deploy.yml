@@ -1,0 +1,40 @@
+# Triển khai app lên GitHub Pages và làm mới dữ liệu NOAA (bão NHC, quan trắc METAR) mỗi 30 phút.
+# Dữ liệu được tạo mới mỗi lần chạy và đóng gói cùng trang, không commit vào repo.
+# Yêu cầu: Settings → Pages → Source = "GitHub Actions".
+name: Triển khai app
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tải dữ liệu NOAA
+        run: python3 scripts/fetch_noaa.py _noaa
+      - name: Chuẩn bị trang
+        run: |
+          mkdir -p _site/data
+          cp -r index.html map.html sw.js manifest.webmanifest .nojekyll icons _site/
+          cp data/* _site/data/ 2>/dev/null || true
+          cp _noaa/* _site/data/ 2>/dev/null || true
+          ls -la _site _site/data
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
