@@ -12,6 +12,10 @@ App thời tiết cho nước Mỹ, dữ liệu chính thức từ NOAA:
 - **Bản đồ 3D kiểu nhà đài** (`map3d.html`, MapLibre GL): địa hình thật, ảnh vệ tinh, vùng cảnh báo dựng khối
   (càng nguy hiểm càng cao, xếp chồng khi trùng vùng), cột số liệu 3D, radar phủ địa hình,
   chế độ "Dẫn chương trình" tự bay tới từng cảnh báo kèm thanh chữ như trên TV
+  - Nón dự báo đường đi bão NHC dạng 3D (nón trắng, điểm dự báo theo cấp bão, cột tâm bão)
+  - Radar động 1–3 giờ qua (NWS NEXRAD qua Iowa Environmental Mesonet, chỉ lục địa Mỹ)
+  - Chế độ trình chiếu toàn màn hình cho TV/máy chiếu: mở `map3d.html?present#TX` (thay TX bằng mã bang, hoặc US),
+    bấm "Bắt đầu trình chiếu"; Esc để thoát
 - Cài lên điện thoại/máy tính như app (PWA), mở được khi mất mạng
 
 Không cần API key, không cần server riêng.
