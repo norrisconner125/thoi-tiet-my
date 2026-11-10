@@ -1,5 +1,7 @@
 # Mẫu gói video YouTube
 
+> Kịch bản chính viết theo `assets/PROMPT_USA.txt` (xem `dien-prompt.md`). File này dùng cho **Title, Thumbnail, Description, Tags**; mục 2 "Script" chỉ dùng cho Shorts hoặc khi người dùng không dùng PROMPT_USA.
+
 ## 0. Ghi chú biên tập (tiếng Việt — không đăng)
 ```
 CÂU CHUYỆN CHÍNH: …

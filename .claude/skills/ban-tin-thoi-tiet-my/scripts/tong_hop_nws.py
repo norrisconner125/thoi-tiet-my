@@ -229,7 +229,32 @@ def alerts(area=None, point=None):
 
 def point_info(lat, lon):
     p = get(f"https://api.weather.gov/points/{lat:.4f},{lon:.4f}")["properties"]
-    return {"wfo": p.get("gridId"), "forecast": p.get("forecast"), "tz": p.get("timeZone")}
+    return {"wfo": p.get("gridId"), "forecast": p.get("forecast"), "tz": p.get("timeZone"), "stations": p.get("observationStations")}
+
+
+def c2f(c):
+    return None if c is None else round(c * 9 / 5 + 32)
+
+
+def latest_obs(stations_url):
+    """Quan trắc mới nhất của trạm gần nhất (nhiệt độ, điểm sương, gió, wind chill, heat index)."""
+    feats = get(stations_url).get("features") or []
+    for f in feats[:3]:
+        sid = f["properties"]["stationIdentifier"]
+        try:
+            o = get(f"https://api.weather.gov/stations/{sid}/observations/latest")["properties"]
+        except Exception:
+            continue
+        val = lambda k: (o.get(k) or {}).get("value")
+        t = parse_time(o.get("timestamp"))
+        if val("temperature") is None or (t and (NOW - t).total_seconds() > 3 * 3600):
+            continue
+        kmh = lambda v: None if v is None else round(v / 1.609)
+        return {"station": sid, "name": f["properties"].get("name"), "time": o.get("timestamp"), "text": o.get("textDescription"),
+                "temp_f": c2f(val("temperature")), "dew_f": c2f(val("dewpoint")), "wind_mph": kmh(val("windSpeed")),
+                "gust_mph": kmh(val("windGust")), "wind_dir": val("windDirection"),
+                "wind_chill_f": c2f(val("windChill")), "heat_index_f": c2f(val("heatIndex"))}
+    return None
 
 
 def forecast(url, days):
@@ -401,7 +426,8 @@ def model_signals(name, det, ens):
                     ens_pct[em] = round(100 * sum(_hit(v, op, th) for v in members) / len(members))
             out.append({"place": name, "date": day, "day_index": i + 1, "hazard": key, "label": label,
                         "agree": f"{len(agree)}/{len(vals)}", "models_hit": agree,
-                        "range": f"{min(vals.values()):.1f}–{max(vals.values()):.1f}", "ensemble_pct": ens_pct})
+                        "range": f"{min(vals.values()):.1f}–{max(vals.values()):.1f}", "ensemble_pct": ens_pct,
+                        "values": {m: round(v, 1) for m, v in vals.items()}})
     return out
 
 
@@ -711,6 +737,7 @@ def collect(args):
 
         pts = {k: v.result() for k, v in f_pts.items()}
         f_fc = {k: F(f"dự báo {k}", forecast, v["forecast"], args.days) for k, v in pts.items() if v and v.get("forecast")}
+        f_obs = {k: F(f"quan trắc {k}", latest_obs, v["stations"]) for k, v in pts.items() if v and v.get("stations")}
         wfos = []
         for v in pts.values():
             if v and v.get("wfo") and v["wfo"] not in wfos:
@@ -741,6 +768,7 @@ def collect(args):
             "cpc": {k: f.result() for k, f in f_cpc.items()},
             "points": pts,
             "forecasts": {k: f.result() for k, f in f_fc.items()},
+            "obs": {k: f.result() for k, f in f_obs.items()},
             "afd": [f.result() for f in f_afd.values() if f.result()],
             "signals": signals,
             "models_used": {"deterministic": DET_MODELS, "ensemble": ENS_MODELS, "days": days_model} if not args.no_models else None,
@@ -880,8 +908,19 @@ def render(d, max_alerts):
         if x:
             w(f"- **{lab}:** {x}")
 
-    # 6. Dự báo 7 ngày
-    w("\n## 6. Dự báo 7 ngày NWS [OFFICIAL]")
+    # 6. Quan trắc + dự báo 7 ngày
+    w("\n## 6a. Quan trắc hiện tại (trạm NWS gần nhất) [OFFICIAL]")
+    obs = {k: v for k, v in (d.get("obs") or {}).items() if v}
+    if not obs:
+        w("- Không có quan trắc (lỗi hoặc trạm không báo trong 3 giờ qua).")
+    for name, o in obs.items():
+        extra = [f"wind chill {o['wind_chill_f']}°F" if o["wind_chill_f"] is not None else "",
+                 f"heat index {o['heat_index_f']}°F" if o["heat_index_f"] is not None else "",
+                 f"gusts {o['gust_mph']} mph" if o["gust_mph"] else ""]
+        w(f"- {name} ({o['station']}, {fmt_time(o['time'])}): {o['temp_f']}°F, dew point {o['dew_f']}°F, {o['text'] or ''}, "
+          f"wind {o['wind_dir'] if o['wind_dir'] is not None else '?'}° {o['wind_mph']} mph" + "".join(f", {x}" for x in extra if x))
+
+    w("\n## 6b. Dự báo 7 ngày NWS [OFFICIAL]")
     for name, periods in d["forecasts"].items():
         if not periods:
             continue
@@ -906,7 +945,8 @@ def render(d, max_alerts):
     else:
         w("Ngưỡng: " + "; ".join(v[3] for v in THRESH.values()) + ". Đồng thuận = số mô hình vượt ngưỡng / số mô hình có dữ liệu. "
           "Ensemble = % thành viên vượt ngưỡng.")
-        w("| Ngày | Hiện tượng | Độ tin cậy | Thành phố (đồng thuận; khoảng giá trị; ensemble GEFS/ECMWF) |")
+        w("Giá trị từng mô hình theo thứ tự: GFS / ECMWF / ICON / GEM (để mô tả kịch bản khi GFS và Euro khác nhau).")
+        w("| Ngày | Hiện tượng | Độ tin cậy | Thành phố (đồng thuận; GFS/ECMWF/ICON/GEM; ensemble GEFS/ECMWF) |")
         w("|---|---|---|---|")
         groups = {}
         for s in d["signals"]:
@@ -917,7 +957,8 @@ def render(d, max_alerts):
             ens_txt = "/".join(f"{ens[m]}%" if m in ens else "—" for m in ENS_MODELS)
             st = CITY_STATE.get(s["place"], "")
             groups.setdefault((s["date"], s["day_index"], s["label"], conf), []).append(
-                f"{s['place']}{' ' + st if st and not s['place'].endswith(st) else ''} ({s['agree']}; {s['range']}; {ens_txt})")
+                f"{s['place']}{' ' + st if st and not s['place'].endswith(st) else ''} ({s['agree']}; "
+                + "/".join(str(s.get("values", {}).get(m, "—")) for m in DET_MODELS) + f"; {ens_txt})")
         order = {"CAO": 0, "TRUNG BÌNH": 1, "THẤP": 2}
         for (date, di, label, conf), cities in sorted(groups.items(), key=lambda kv: (kv[0][0], order[kv[0][3]], kv[0][2])):
             w(f"| {date} (D{di}) | {label} | {conf} | {', '.join(cities)} |")

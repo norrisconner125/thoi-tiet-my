@@ -1,6 +1,6 @@
 ---
 name: ban-tin-thoi-tiet-my
-description: Tìm, xác thực và tổng hợp tin thời tiết toàn nước Mỹ thành các gói video YouTube tiếng Anh cho khán giả Mỹ: phân loại và chọn tin hot nhất trong ngày theo khu vực (gộp các bang liền kề cùng loại sự kiện), tách riêng bang có sự kiện đủ lớn; mỗi đề tài một gói (kịch bản chia đoạn, tiêu đề, mô tả, tag, gợi ý hình ảnh). Cảnh báo/dự báo lấy từ NOAA–NWS (SPC, WPC, NHC, CPC), tin thiệt hại đối chiếu với nhà đài địa phương uy tín, báo sớm 3–14 ngày bằng số liệu mô hình GFS, ECMWF, ICON, GEM và ensemble. Dùng khi người dùng xin bản tin, kịch bản, video, cảnh báo, dự báo, tin bão, lốc xoáy, bão tuyết, lũ, nắng nóng, đợt lạnh cho nước Mỹ, một vùng, bang hoặc thành phố, hoặc gọi /ban-tin-thoi-tiet-my.
+description: Tìm, xác thực và tổng hợp tin thời tiết toàn nước Mỹ cho video YouTube tiếng Anh dành cho khán giả Mỹ: phân loại và chọn tin hot nhất trong ngày theo khu vực (gộp các bang liền kề cùng loại sự kiện), tách riêng bang có sự kiện đủ lớn; với mỗi đề tài điền sẵn prompt viết kịch bản PROMPT_USA của người dùng bằng dữ liệu đã kiểm chứng, và khi được yêu cầu thì viết kịch bản SRT 12–15 phút an toàn cho TTS rồi tự kiểm tra. Cảnh báo/dự báo lấy từ NOAA–NWS (SPC, WPC, NHC, CPC), tin thiệt hại đối chiếu với nhà đài địa phương uy tín, báo sớm 3–14 ngày bằng số liệu mô hình GFS, ECMWF, ICON, GEM và ensemble. Dùng khi người dùng xin bản tin, kịch bản, video, cảnh báo, dự báo, tin bão, lốc xoáy, bão tuyết, lũ, nắng nóng, đợt lạnh cho nước Mỹ, một vùng, bang hoặc thành phố, hoặc gọi /ban-tin-thoi-tiet-my.
 ---
 
 # Bản tin thời tiết Mỹ → gói video YouTube
@@ -65,25 +65,46 @@ Theo `references/nha-dai-theo-bang.md`. Quy tắc:
 - Không giật gân: không "apocalyptic", "monster", "historic" (trừ khi NWS dùng), không tiêu đề hứa điều video không có.
 - Nhắc người xem theo dõi văn phòng NWS địa phương và làm theo hướng dẫn của chính quyền khi có cảnh báo.
 
-## Bước 5 — Gói sản phẩm (đầu ra)
+## Bước 5 — Đào sâu từng đề tài đã chọn
+
+Với mỗi đề tài RẤT HOT/HOT (tối đa 5, theo thứ tự điểm), chạy lại script cho đúng các bang của đề tài để có dữ liệu chi tiết
+(quan trắc hiện tại, dự báo 7 ngày nhiều thành phố, AFD của văn phòng NWS địa phương):
+
+```bash
+python3 scripts/tong_hop_nws.py --area TX --cities 4 --afd 3
+python3 scripts/tong_hop_nws.py --area LA,MS,AR --cities 3 --afd 3
+```
+Rồi bổ sung bằng web: WPC Key Messages/Storm Summary (nếu có), SPC Day 4–8, tin nhà đài của các bang (Bước 3).
+
+## Bước 6 — Điền prompt viết kịch bản (đầu ra chính)
+
+Mẫu: `assets/PROMPT_USA.txt` (prompt của người dùng). Cách điền chi tiết: `references/dien-prompt.md`.
 
 Thứ tự trả lời:
 1. **Bảng đề tài trong ngày** (tiếng Việt) — như Bước 2.4.
-2. **Một gói video riêng cho mỗi đề tài RẤT HOT và HOT** (tối đa 5, theo thứ tự điểm), theo mẫu `references/mau-youtube.md`.
-   Đề tài ĐÁNG CHÚ Ý: chỉ liệt kê kèm 2–3 ý chính; người dùng muốn thì làm gói đầy đủ sau.
-   Nếu số đề tài HOT nhiều hơn 5 hoặc thông tin quá dài: làm đầy đủ 2 đề tài đầu, các đề tài còn lại hỏi người dùng có muốn làm tiếp không.
-3. Tùy chọn: 1 video **National Roundup** ngắn tổng hợp mọi đề tài (khi người dùng xin, hoặc khi các đề tài đều chỉ ở mức ĐÁNG CHÚ Ý).
+2. **Mỗi đề tài RẤT HOT/HOT: một bản PROMPT_USA đã điền**, đặt trong khối ```text```, và lưu thành file
+   `prompt_<yyyy-mm-dd>_<ten-de-tai>.txt` (ví dụ `prompt_2026-11-10_texas-severe-storms.txt`).
+   - **Giữ nguyên toàn bộ cấu trúc và chữ của mẫu**; chỉ thay các chỗ `[INSERT …]` / `[Paste …]` ở phần VIDEO INFORMATION.
+   - Bỏ dòng ghi chú tiếng Việt "từ tất cả những phân tích… giữ nguyên cấu trúc" (đó là lời dặn cho Claude, không thuộc prompt).
+   - CURRENT WEATHER DATA và FORECAST DATA: chỉ chứa dữ liệu đã kiểm chứng, mỗi dòng có **nguồn + giờ phát hành**, đúng ngày phát sóng.
+3. Đề tài ĐÁNG CHÚ Ý: liệt kê kèm 2–3 ý chính; người dùng muốn thì điền prompt sau.
+4. Kèm mỗi đề tài: 3 phương án **Title**, **Thumbnail text**, **Description** (có nguồn + disclaimer), **Tags** — theo `references/mau-youtube.md`.
 
-Mỗi gói video gồm:
-1. **Ghi chú biên tập (tiếng Việt)** — đề tài, bang, độ tin cậy, điểm cần cẩn trọng, nguồn bị lỗi.
-2. **Title** — 3 phương án (≤70 ký tự), nêu đúng bang/khu vực của đề tài. **Thumbnail text** — 2–4 từ.
-3. **Script** — tiếng Anh, chia **đoạn đánh số 1…N** (mỗi đoạn = một file voice `N.mp3`, 1–3 câu, ~8–20 giây), mỗi đoạn kèm cột **Visual** (bản đồ/lớp dữ liệu/khu vực cần hiển thị) để dựng video.
-4. **Description** — tóm tắt, chapter timestamps (ước lượng), nguồn có link, disclaimer.
-5. **Tags** và **Hashtags** (có tên bang/thành phố của đề tài).
-6. **Bảng nguồn & giờ phát hành**.
-7. Nếu người dùng cần: file **SRT** (ước lượng 2.5 từ/giây) hoặc lưu từng gói ra file `.md` riêng (tên file theo đề tài, ví dụ `2026-11-10_texas-severe-storms.md`).
+## Bước 7 — Viết kịch bản SRT (khi người dùng yêu cầu "viết kịch bản", "viết luôn", "làm SRT")
 
-Độ dài: video bang riêng 3–6 phút; video khu vực 4–7 phút; Shorts (khi được xin) 45–60 giây, 5–8 đoạn.
+Thực hiện đúng prompt đã điền, kèm các quy tắc trong `references/dien-prompt.md` (mục "Viết SRT"):
+- Mỗi đoạn SRT **20–25 từ, đúng một câu hoàn chỉnh**, tiếng Anh Mỹ chuẩn, an toàn cho TTS (không ký hiệu °, %, /, &, không viết tắt khó đọc, không mã bang).
+- Tổng 12–15 phút (≈ 85–110 đoạn ở tốc độ 150 từ/phút), trừ khi prompt ghi độ dài khác.
+- **Chỉ dùng dữ liệu có trong phần VIDEO INFORMATION đã điền.** Không thêm số liệu mới khi viết.
+- Lưu file `kich-ban_<yyyy-mm-dd>_<ten-de-tai>.srt`, rồi **bắt buộc chạy kiểm tra**:
+  ```bash
+  python3 scripts/kiem_tra_srt.py kich-ban_2026-11-10_texas-severe-storms.srt --retime --wpm 150 -o kich-ban_2026-11-10_texas-severe-storms.srt
+  ```
+  Sửa đến khi báo **ĐẠT** (cảnh báo phải xem và sửa nếu đúng là lỗi), rồi mới giao file.
+- Sau đó làm **bảng rà soát fact-check** (mục 4 của `references/dien-prompt.md`): mỗi con số/khẳng định trong kịch bản → nguồn + giờ phát hành.
+  Câu nào không có nguồn → sửa hoặc xóa.
+
+Mỗi lần viết một đề tài (kịch bản 12–15 phút rất dài). Xong đề tài này mới hỏi làm đề tài tiếp theo.
 
 ## Thuật ngữ
 `references/thuat-ngu.md` (Anh ↔ Việt, thang SPC/ERO/EF/Saffir-Simpson, múi giờ) — dùng khi giải thích cho người dùng; kịch bản giữ thuật ngữ gốc tiếng Anh.
