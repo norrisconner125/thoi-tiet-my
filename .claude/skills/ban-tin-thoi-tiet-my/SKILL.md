@@ -1,6 +1,6 @@
 ---
 name: ban-tin-thoi-tiet-my
-description: Tìm, xác thực và tổng hợp tin thời tiết toàn nước Mỹ thành gói video YouTube tiếng Anh cho khán giả Mỹ (kịch bản chia đoạn, tiêu đề, mô tả, tag, gợi ý hình ảnh). Cảnh báo/dự báo lấy từ NOAA–NWS (SPC, WPC, NHC, CPC), tin thiệt hại đối chiếu với nhà đài địa phương uy tín, báo sớm 3–14 ngày bằng số liệu mô hình GFS, ECMWF, ICON, GEM và ensemble. Dùng khi người dùng xin bản tin, kịch bản, video, cảnh báo, dự báo, tin bão, lốc xoáy, bão tuyết, lũ, nắng nóng, đợt lạnh cho nước Mỹ, một vùng, bang hoặc thành phố, hoặc gọi /ban-tin-thoi-tiet-my.
+description: Tìm, xác thực và tổng hợp tin thời tiết toàn nước Mỹ thành các gói video YouTube tiếng Anh cho khán giả Mỹ: phân loại và chọn tin hot nhất trong ngày theo khu vực (gộp các bang liền kề cùng loại sự kiện), tách riêng bang có sự kiện đủ lớn; mỗi đề tài một gói (kịch bản chia đoạn, tiêu đề, mô tả, tag, gợi ý hình ảnh). Cảnh báo/dự báo lấy từ NOAA–NWS (SPC, WPC, NHC, CPC), tin thiệt hại đối chiếu với nhà đài địa phương uy tín, báo sớm 3–14 ngày bằng số liệu mô hình GFS, ECMWF, ICON, GEM và ensemble. Dùng khi người dùng xin bản tin, kịch bản, video, cảnh báo, dự báo, tin bão, lốc xoáy, bão tuyết, lũ, nắng nóng, đợt lạnh cho nước Mỹ, một vùng, bang hoặc thành phố, hoặc gọi /ban-tin-thoi-tiet-my.
 ---
 
 # Bản tin thời tiết Mỹ → gói video YouTube
@@ -32,12 +32,18 @@ có số mô hình đồng thuận + % ensemble + độ tin cậy. Cuối bản 
 Luôn xem thêm (script không lấy): **SPC Day 4–8**, **WPC Hazards Outlook 3–7 ngày**, **WPC Key Messages** (khi có sự kiện lớn), sông lũ (water.noaa.gov).
 Địa chỉ: `references/nguon-noaa-nws.md`. Đọc mô hình: `references/radar-va-mo-hinh.md`.
 
-## Bước 2 — Chọn câu chuyện chính
+## Bước 2 — Phân loại & chọn tin hot theo khu vực / bang (bắt buộc)
 
-Xếp hạng sự kiện theo: (1) nguy hiểm tính mạng, (2) số dân bị ảnh hưởng, (3) mức độ hiếm/kỷ lục, (4) độ chắc chắn.
-- Có cảnh báo cấp Emergency/Warning lớn, SPC ≥ Enhanced, WPC ERO ≥ Moderate, bão NHC đe dọa đất liền → đó là **câu chuyện chính**.
-- Không có cảnh báo lớn → câu chuyện chính là **sự kiện sắp tới** (mặt trận lạnh, bão tuyết, đợt nóng…) từ SPC/WPC/CPC + tín hiệu mô hình độ tin cậy CAO/TRUNG BÌNH, kèm dự báo 7 ngày các thành phố lớn.
-- Chọn 1 câu chuyện chính + 2–4 câu chuyện phụ theo vùng (West, Plains, Midwest, South, Northeast…).
+Chi tiết cách chấm và điều chỉnh: `references/phan-loai-tin.md`. Tóm tắt:
+1. Script in sẵn **"0. BẢNG XẾP HẠNG ĐỀ TÀI"**: chấm điểm từng bang (cảnh báo NWS, SPC, WPC ERO, Storm Reports, tín hiệu mô hình),
+   gom **các bang liền kề cùng loại sự kiện** thành một đề tài khu vực, và **tách riêng bang nào đạt ≥45 điểm** thành đề tài riêng.
+2. Claude **điều chỉnh** điểm bằng tin tức đã xác thực (Bước 3): thương vong, thiệt hại lớn, kỷ lục, thành phố lớn bị ảnh hưởng,
+   mức độ báo chí quốc gia đưa tin. Một bang có thể được nâng lên video riêng (hoặc gộp lại) nếu tin tức cho thấy khác với điểm tự động — ghi rõ lý do.
+3. Loại sự kiện gồm: dông mạnh/lốc xoáy, bão nhiệt đới, mưa lớn/lũ, bão tuyết/băng giá, rét, nắng nóng, cháy rừng, gió mạnh, ngập ven biển.
+   Hai hiện tượng khác loại ở hai bang liền kề → **hai đề tài khác nhau** (trừ khi cùng một hệ thống, ví dụ một cơn bão gây cả tuyết lẫn dông — khi đó gộp và nêu cả hai).
+4. Chốt **Bảng đề tài trong ngày** (tiếng Việt) cho người dùng: thứ tự, tên đề tài, loại (bang riêng/khu vực), bang, hiện tượng, thời điểm, mức (RẤT HOT/HOT/ĐÁNG CHÚ Ý), lý do 1 dòng.
+5. Đề tài cùng một hệ thống thời tiết (ví dụ video Texas riêng + video "South outside Texas"): mỗi video **nhắc chéo** video kia trong 1 câu, không lặp nội dung chi tiết.
+6. Không có đề tài nào đạt ngưỡng → làm **1 video tổng hợp toàn quốc** (dự báo 7 ngày các thành phố lớn + sự kiện sắp tới).
 
 ## Bước 3 — Xác thực tin thực tế (thiệt hại, mất điện, thương vong, sơ tán)
 
@@ -61,16 +67,23 @@ Theo `references/nha-dai-theo-bang.md`. Quy tắc:
 
 ## Bước 5 — Gói sản phẩm (đầu ra)
 
-Theo mẫu trong `references/mau-youtube.md`. Gồm:
-1. **Ghi chú biên tập (tiếng Việt)** — tóm tắt 5 dòng, câu chuyện chính, độ tin cậy, điểm cần cẩn trọng, nguồn bị lỗi.
-2. **Title** — 3 phương án (≤70 ký tự). **Thumbnail text** — 2–4 từ.
-3. **Script** — tiếng Anh, chia **đoạn đánh số 1…N** (mỗi đoạn = một file voice `N.mp3`, 1–3 câu, ~8–20 giây), mỗi đoạn kèm cột **Visual** (bản đồ/lớp dữ liệu/khu vực cần hiển thị) để dựng video.
-4. **Description** — tóm tắt, chapter timestamps (ước lượng), danh sách nguồn có link, câu disclaimer.
-5. **Tags** và **Hashtags**.
-6. **Bảng nguồn & giờ phát hành** (cho biên tập kiểm tra).
-7. Nếu người dùng cần: file **SRT** (ước lượng 2.5 từ/giây) hoặc lưu kịch bản ra file `.md`.
+Thứ tự trả lời:
+1. **Bảng đề tài trong ngày** (tiếng Việt) — như Bước 2.4.
+2. **Một gói video riêng cho mỗi đề tài RẤT HOT và HOT** (tối đa 5, theo thứ tự điểm), theo mẫu `references/mau-youtube.md`.
+   Đề tài ĐÁNG CHÚ Ý: chỉ liệt kê kèm 2–3 ý chính; người dùng muốn thì làm gói đầy đủ sau.
+   Nếu số đề tài HOT nhiều hơn 5 hoặc thông tin quá dài: làm đầy đủ 2 đề tài đầu, các đề tài còn lại hỏi người dùng có muốn làm tiếp không.
+3. Tùy chọn: 1 video **National Roundup** ngắn tổng hợp mọi đề tài (khi người dùng xin, hoặc khi các đề tài đều chỉ ở mức ĐÁNG CHÚ Ý).
 
-Độ dài mặc định: 4–7 phút (≈ 600–1000 từ). Người dùng xin "Shorts" → 45–60 giây, 1 câu chuyện, 5–8 đoạn.
+Mỗi gói video gồm:
+1. **Ghi chú biên tập (tiếng Việt)** — đề tài, bang, độ tin cậy, điểm cần cẩn trọng, nguồn bị lỗi.
+2. **Title** — 3 phương án (≤70 ký tự), nêu đúng bang/khu vực của đề tài. **Thumbnail text** — 2–4 từ.
+3. **Script** — tiếng Anh, chia **đoạn đánh số 1…N** (mỗi đoạn = một file voice `N.mp3`, 1–3 câu, ~8–20 giây), mỗi đoạn kèm cột **Visual** (bản đồ/lớp dữ liệu/khu vực cần hiển thị) để dựng video.
+4. **Description** — tóm tắt, chapter timestamps (ước lượng), nguồn có link, disclaimer.
+5. **Tags** và **Hashtags** (có tên bang/thành phố của đề tài).
+6. **Bảng nguồn & giờ phát hành**.
+7. Nếu người dùng cần: file **SRT** (ước lượng 2.5 từ/giây) hoặc lưu từng gói ra file `.md` riêng (tên file theo đề tài, ví dụ `2026-11-10_texas-severe-storms.md`).
+
+Độ dài: video bang riêng 3–6 phút; video khu vực 4–7 phút; Shorts (khi được xin) 45–60 giây, 5–8 đoạn.
 
 ## Thuật ngữ
 `references/thuat-ngu.md` (Anh ↔ Việt, thang SPC/ERO/EF/Saffir-Simpson, múi giờ) — dùng khi giải thích cho người dùng; kịch bản giữ thuật ngữ gốc tiếng Anh.

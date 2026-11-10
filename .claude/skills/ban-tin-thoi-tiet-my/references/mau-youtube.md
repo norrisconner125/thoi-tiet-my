@@ -23,7 +23,7 @@ Câu hỏi ("?") dùng cho tin mô hình chưa chắc chắn. Không viết hoa 
 | # | Voiceover (English) | Visual | Nguồn |
 |---|---|---|---|
 | 1 | Hook — 1–2 câu: chuyện lớn nhất hôm nay, ai bị ảnh hưởng, khi nào. | Bản đồ toàn quốc, khoanh vùng sự kiện | SPC/NWS |
-| 2 | "Here's your national weather update for Tuesday, November 10th, as of 10 a.m. Eastern." | Logo/kênh, ngày giờ | — |
+| 2 | Giới thiệu đúng đề tài: "Here's the latest on the severe weather threat in Texas, as of 10 a.m. Central, Tuesday, November 10th." (video tổng hợp: "your national weather update") | Logo/kênh, ngày giờ | — |
 | 3… | Câu chuyện chính: cảnh báo hiện hành (tên cảnh báo, bang/khu vực, hiệu lực đến mấy giờ), hiểm họa (gust 70 mph, hail 2", tornadoes possible), thời gian diễn biến theo giờ địa phương. | Lớp **Alerts** NWS; lớp **SPC outlook**; **Radar** | NWS, SPC |
 | … | Thực tế đã xảy ra (đã xác thực): "According to KFOR, …", "preliminary reports show…" | Clip/ảnh hiện trường có thẻ địa danh | Nhà đài |
 | … | Câu chuyện phụ theo vùng. | Bản đồ vùng | WPC/NWS |

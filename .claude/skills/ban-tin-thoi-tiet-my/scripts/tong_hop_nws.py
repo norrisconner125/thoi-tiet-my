@@ -405,6 +405,258 @@ def model_signals(name, det, ens):
     return out
 
 
+# ---------------- Chấm điểm độ hot & gom đề tài ----------------
+_ADJ_RAW = {
+    "AL": "FL GA MS TN", "AZ": "CA CO NM NV UT", "AR": "LA MO MS OK TN TX", "CA": "AZ NV OR", "CO": "AZ KS NE NM OK UT WY",
+    "CT": "MA NY RI", "DE": "MD NJ PA", "DC": "MD VA", "FL": "AL GA", "GA": "AL FL NC SC TN", "ID": "MT NV OR UT WA WY",
+    "IL": "IA IN KY MO WI", "IN": "IL KY MI OH", "IA": "IL MN MO NE SD WI", "KS": "CO MO NE OK", "KY": "IL IN MO OH TN VA WV",
+    "LA": "AR MS TX", "ME": "NH", "MD": "DE PA VA WV DC", "MA": "CT NH NY RI VT", "MI": "IN OH WI", "MN": "IA ND SD WI",
+    "MS": "AL AR LA TN", "MO": "AR IA IL KS KY NE OK TN", "MT": "ID ND SD WY", "NE": "CO IA KS MO SD WY", "NV": "AZ CA ID OR UT",
+    "NH": "MA ME VT", "NJ": "DE NY PA", "NM": "AZ CO OK TX", "NY": "CT MA NJ PA VT", "NC": "GA SC TN VA", "ND": "MN MT SD",
+    "OH": "IN KY MI PA WV", "OK": "AR CO KS MO NM TX", "OR": "CA ID NV WA", "PA": "DE MD NJ NY OH WV", "RI": "CT MA", "SC": "GA NC",
+    "SD": "IA MN MT ND NE WY", "TN": "AL AR GA KY MO MS NC VA", "TX": "AR LA NM OK", "UT": "AZ CO ID NV WY", "VT": "MA NH NY",
+    "VA": "KY MD NC TN WV DC", "WA": "ID OR", "WV": "KY MD OH PA VA", "WI": "IA IL MI MN", "WY": "CO ID MT NE SD UT",
+}
+ADJ = {}
+for _s, _n in _ADJ_RAW.items():
+    for _t in _n.split():
+        ADJ.setdefault(_s, set()).add(_t)
+        ADJ.setdefault(_t, set()).add(_s)
+
+REGION = {}
+for _r, _ss in {"Northeast": "ME NH VT MA RI CT NY NJ PA", "Mid-Atlantic": "DE MD DC VA WV", "Southeast": "NC SC GA FL",
+                "South": "AL MS LA AR TN KY", "Midwest": "OH IN IL MI WI MN IA MO", "Northern Plains": "ND SD NE",
+                "Southern Plains": "TX OK KS", "Rockies": "MT WY CO UT ID", "Southwest": "AZ NM NV", "West Coast": "CA OR WA",
+                "Alaska": "AK", "Hawaii": "HI", "Caribbean": "PR VI", "Pacific Islands": "GU AS MP"}.items():
+    for _s in _ss.split():
+        REGION[_s] = _r
+
+CAT_VI = {"severe": "Dông mạnh/lốc xoáy", "tropical": "Bão nhiệt đới", "flood": "Mưa lớn/lũ", "winter": "Bão tuyết/băng giá",
+          "cold": "Rét đậm/đóng băng", "heat": "Nắng nóng", "fire": "Cháy rừng", "wind": "Gió mạnh/bão bụi",
+          "coastal": "Ngập ven biển/sóng lớn", "other": "Khác (sương mù, không khí…)"}
+CAT_EN = {"severe": "Severe Storms", "tropical": "Tropical", "flood": "Flooding Rain", "winter": "Winter Storm", "cold": "Arctic Cold",
+          "heat": "Heat Wave", "fire": "Fire Danger", "wind": "High Winds", "coastal": "Coastal Flooding", "other": "Weather"}
+
+# Trọng số cảnh báo (điểm cho cảnh báo đầu tiên của loại đó trong bang).
+ALERT_W = {
+    "Tornado Emergency": 60, "Flash Flood Emergency": 60, "Extreme Wind Warning": 60, "Hurricane Warning": 50, "Storm Surge Warning": 40,
+    "PDS Tornado Watch": 35, "Tsunami Warning": 50, "Blizzard Warning": 28, "Ice Storm Warning": 28, "Tropical Storm Warning": 25,
+    "Tornado Warning": 18, "Hurricane Watch": 25, "Extreme Heat Warning": 18, "Excessive Heat Warning": 18, "Extreme Cold Warning": 18,
+    "Winter Storm Warning": 16, "Tornado Watch": 16, "Flash Flood Warning": 14, "Storm Surge Watch": 15, "Lake Effect Snow Warning": 14,
+    "Snow Squall Warning": 8, "Dust Storm Warning": 10, "Tropical Storm Watch": 12, "High Wind Warning": 9, "Red Flag Warning": 7,
+    "Severe Thunderstorm Watch": 9, "Severe Thunderstorm Warning": 5, "Winter Storm Watch": 9, "Flood Warning": 6, "Flash Flood Watch": 6,
+    "Extreme Heat Watch": 7, "Extreme Cold Watch": 7, "Coastal Flood Warning": 7, "Flood Watch": 4, "High Wind Watch": 4,
+    "Fire Weather Watch": 3, "Winter Weather Advisory": 3, "Heat Advisory": 3, "Cold Weather Advisory": 2, "Wind Advisory": 2,
+    "Freeze Warning": 2, "Coastal Flood Advisory": 1, "Flood Advisory": 1, "Dense Fog Advisory": 1, "Air Quality Alert": 1,
+}
+SPC_PTS = {"MRGL": 3, "SLGT": 8, "ENH": 16, "MDT": 28, "HIGH": 40}
+ERO_PTS = {1: 2, 2: 6, 3: 18, 4: 30}
+SIG_PTS = {"CAO": 6, "TRUNG BÌNH": 3}
+SIG_CAT = {"heavy_rain": "flood", "snow": "winter", "wind": "wind", "heat": "heat", "cold": "cold"}
+SOLO = 45        # bang đạt điểm này → đề tài riêng
+STORY_MIN = 15   # dưới mức này không thành đề tài
+
+
+def event_cat(ev):
+    e = ev.replace("PDS ", "")
+    rules = [("tropical", ("Hurricane", "Tropical Storm", "Storm Surge", "Typhoon")), ("severe", ("Tornado", "Severe Thunderstorm", "Extreme Wind")),
+             ("flood", ("Flood",)), ("winter", ("Blizzard", "Ice Storm", "Winter", "Snow", "Lake Effect", "Freezing")),
+             ("cold", ("Cold", "Freeze", "Frost", "Wind Chill")), ("heat", ("Heat",)), ("fire", ("Red Flag", "Fire")),
+             ("wind", ("Wind", "Dust")), ("coastal", ("Coastal", "Surf", "Rip Current", "Tsunami"))]
+    if e.startswith("Coastal Flood"):
+        return "coastal"
+    for cat, keys in rules:
+        if any(k in e for k in keys):
+            return cat
+    return "other"
+
+
+def _conf(s):
+    n = int(s["agree"].split("/")[0])
+    top = max(s["ensemble_pct"].values()) if s["ensemble_pct"] else 0
+    return "CAO" if n >= 3 and top >= 50 else "TRUNG BÌNH" if n >= 2 or top >= 30 else "THẤP"
+
+
+def score_states(d):
+    """Điểm theo bang và theo loại sự kiện: {state: {cat: {"now": x, "soon": y, "why": [..]}}}."""
+    S = {}
+
+    def add(st, cat, pts, why, soon=False):
+        if not st or pts <= 0:
+            return
+        c = S.setdefault(st, {}).setdefault(cat, {"now": 0.0, "soon": 0.0, "why": []})
+        c["soon" if soon else "now"] += pts
+        c["why"].append(why)
+
+    counts = {}
+    for a in d.get("alerts") or []:
+        for st in a["states"]:
+            counts[(st, a["event"])] = counts.get((st, a["event"]), 0) + 1
+    for (st, ev), n in counts.items():
+        w = ALERT_W.get(ev, 1)
+        add(st, event_cat(ev), w * min(1 + 0.3 * (n - 1), 2.5), f"{ev} ×{n}")
+
+    best_spc, best_ero = {}, {}
+    for r in d.get("risk") or []:
+        st = r.get("state")
+        for day, lab in (r.get("spc") or {}).items():
+            if lab in SPC_PTS:
+                k = (st, int(day))
+                if SPC_PTS[lab] > SPC_PTS.get(best_spc.get(k), 0):
+                    best_spc[k] = lab
+        for day, lvl in (r.get("ero") or {}).items():
+            if lvl:
+                k = (st, int(day))
+                best_ero[k] = max(best_ero.get(k, 0), lvl)
+    for (st, day), lab in best_spc.items():
+        add(st, "severe", SPC_PTS[lab] / day, f"SPC D{day} {SPC_TXT[lab]}", soon=day > 1)
+    for (st, day), lvl in best_ero.items():
+        add(st, "flood", ERO_PTS[lvl] / day, f"WPC ERO D{day} {ERO_TXT[lvl]}", soon=day > 1)
+
+    for which, mult in (("today", 1.0), ("yesterday", 0.6)):
+        r = (d.get("reports") or {}).get(which) or {}
+        per = {}
+        for k in ("tornado", "wind", "hail"):
+            for x in r.get(k, []):
+                per.setdefault(x["state"], {"tornado": 0, "wind": 0, "hail": 0, "bighail": 0})[k] += 1
+                if k == "hail" and x["mag"].isdigit() and int(x["mag"]) >= 200:
+                    per[x["state"]]["bighail"] += 1
+        for st, c in per.items():
+            pts = (min(c["tornado"] * 7, 45) + min(c["wind"], 15) + min(c["hail"], 10) + min(c["bighail"] * 3, 12)) * mult
+            add(st, "severe", pts, f"Storm reports {which}: {c['tornado']} tornado, {c['wind']} wind, {c['hail']} hail")
+
+    sig = {}
+    for s in d.get("signals") or []:
+        conf = _conf(s)
+        st = CITY_STATE.get(s["place"])
+        if conf in SIG_PTS and st:
+            k = (st, SIG_CAT[s["hazard"]], s["date"])
+            if SIG_PTS[conf] > sig.get(k, (0, ""))[0]:
+                sig[k] = (SIG_PTS[conf], f"Mô hình {s['date']}: {s['label']} tại {s['place']} ({s['agree']}, tin cậy {conf})")
+    per_cat = {}
+    for (st, cat, _), (pts, why) in sig.items():
+        per_cat.setdefault((st, cat), []).append((pts, why))
+    for (st, cat), lst in per_cat.items():
+        lst.sort(reverse=True)
+        add(st, cat, min(sum(p for p, _ in lst), 18), lst[0][1] + (f" (+{len(lst) - 1} ngày khác)" if len(lst) > 1 else ""), soon=True)
+    return S
+
+
+def _components(states, cat_of):
+    seen, comps = set(), []
+    for s in sorted(states):
+        if s in seen:
+            continue
+        comp, stack = [], [s]
+        seen.add(s)
+        while stack:
+            x = stack.pop()
+            comp.append(x)
+            for y in ADJ.get(x, ()):
+                if y in states and y not in seen and cat_of[y] == cat_of[s]:
+                    seen.add(y)
+                    stack.append(y)
+        comps.append(sorted(comp))
+    return comps
+
+
+def build_stories(d):
+    S = score_states(d)
+    total = {st: {cat: v["now"] + v["soon"] for cat, v in cats.items()} for st, cats in S.items()}
+    main_cat = {st: max(c, key=c.get) for st, c in total.items() if c}
+    score = {st: round(sum(total[st].values())) for st in main_cat}
+    hot = {st for st, sc in score.items() if sc >= STORY_MIN / 2}  # bang có tín hiệu đáng kể mới được gom
+    stories = []
+
+    def make(states, kind):
+        cats = {}
+        for st in states:
+            for cat, v in total[st].items():
+                cats[cat] = cats.get(cat, 0) + v
+        cat = max(cats, key=cats.get)
+        now = sum(S[st][c]["now"] for st in states for c in S[st])
+        soon = sum(S[st][c]["soon"] for st in states for c in S[st])
+        ranked = sorted((score[st] for st in states), reverse=True)
+        sc = round(ranked[0] + 0.5 * sum(ranked[1:]))  # khu vực: bang mạnh nhất + nửa điểm các bang còn lại
+        regions = []
+        for st in sorted(states, key=lambda s: -score[s]):
+            if REGION.get(st, st) not in regions:
+                regions.append(REGION.get(st, st))
+        if kind == "solo":
+            name = f"{STATE_NAME.get(states[0], states[0])} {CAT_EN[cat]}"
+        else:
+            name = f"{' & '.join(regions[:2])} {CAT_EN[cat]}"
+        why = []
+        for st in sorted(states, key=lambda s: -score[s])[:4]:
+            for c in sorted(S[st], key=lambda c: -total[st][c])[:2]:
+                why.append(f"{st}: " + "; ".join(S[st][c]["why"][:3]))
+        tier = "RẤT HOT" if sc >= 70 else "HOT" if sc >= 40 else "ĐÁNG CHÚ Ý" if sc >= STORY_MIN else "PHỤ"
+        return {"name": name, "kind": "Bang riêng" if kind == "solo" else "Khu vực", "category": cat, "category_vi": CAT_VI[cat],
+                "timing": "Đang diễn ra / hôm nay" if now >= soon else "Sắp tới (ngày 2–10)", "score": sc, "tier": tier,
+                "states": sorted(states, key=lambda s: -score[s]), "state_scores": {s: score[s] for s in states},
+                "other_hazards": sorted({CAT_VI[c] for st in states for c in total[st] if c != cat and total[st][c] >= 5}),
+                "why": why}
+
+    # Gom theo hệ thống (bang liền kề, cùng loại sự kiện) trước, rồi mới tách bang đủ hot ra video riêng.
+    # Các bang còn lại của cùng hệ thống vẫn là MỘT video khu vực (kể cả khi không còn liền kề sau khi tách).
+    for comp in _components(hot, main_cat):
+        solo = [st for st in comp if score[st] >= SOLO]
+        rest = [st for st in comp if st not in solo]
+        solo_names = [STATE_NAME.get(st, st) for st in solo]
+        group = []
+        for st in solo:
+            x = make([st], "solo")
+            group.append(x)
+        if rest:
+            x = make(rest, "region")
+            if solo:
+                x["name"] += f" (outside {' & '.join(solo_names)})"
+            if x["score"] >= STORY_MIN:
+                group.append(x)
+        if len(comp) > 1:
+            system = ", ".join(sorted(comp, key=lambda s: -score[s]))
+            for x in group:
+                x["related"] = [y["name"] for y in group if y is not x]
+                x["system"] = system
+        stories += group
+    stories.sort(key=lambda s: -s["score"])
+    return stories
+
+
+STATE_NAME = {"AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut",
+              "DE": "Delaware", "DC": "Washington D.C.", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
+              "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+              "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
+              "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+              "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
+              "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+              "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+              "PR": "Puerto Rico", "VI": "U.S. Virgin Islands", "GU": "Guam", "AS": "American Samoa"}
+
+
+def render_stories(stories):
+    L = ["## 0. BẢNG XẾP HẠNG ĐỀ TÀI (điểm tự động — Claude điều chỉnh theo tin tức đã xác thực)"]
+    if not stories:
+        L.append("- Không có đề tài nào đạt ngưỡng. → Làm 1 video tổng hợp toàn quốc (dự báo 7 ngày + sự kiện sắp tới).")
+        return "\n".join(L)
+    L.append(f"Quy tắc: bang ≥{SOLO} điểm → video riêng; các bang liền kề cùng loại sự kiện → gộp 1 video khu vực (điểm = bang mạnh nhất + ½ các bang còn lại); đề tài <{STORY_MIN} điểm bỏ. Mức: ≥70 RẤT HOT, 40–69 HOT, {STORY_MIN}–39 ĐÁNG CHÚ Ý.")
+    L.append("| # | Đề tài (tên gợi ý) | Loại | Hiện tượng | Thời điểm | Điểm | Mức | Bang (điểm) |")
+    L.append("|---|---|---|---|---|---|---|---|")
+    for i, s in enumerate(stories, 1):
+        sts = ", ".join(f"{st} {s['state_scores'][st]}" for st in s["states"])
+        L.append(f"| {i} | {s['name']} | {s['kind']} | {s['category_vi']} | {s['timing']} | {s['score']} | {s['tier']} | {sts} |")
+    L.append("")
+    for i, s in enumerate(stories, 1):
+        L.append(f"**#{i} {s['name']}** — lý do:")
+        for w in s["why"]:
+            L.append(f"  - {w}")
+        if s["other_hazards"]:
+            L.append(f"  - Hiện tượng khác trong vùng: {', '.join(s['other_hazards'])}")
+        if s.get("related"):
+            L.append(f"  - Cùng hệ thống thời tiết ({s['system']}) với: {'; '.join(s['related'])} → nhắc chéo trong video, không lặp nội dung")
+    return "\n".join(L)
+
+
 # ---------------- tổng hợp ----------------
 def resolve_places(args):
     if args.city:
@@ -474,7 +726,7 @@ def collect(args):
         for n in f_det:
             signals += model_signals(n, f_det[n].result(), {m: f.result() for m, f in f_ens[n].items()})
 
-        return {
+        out = {
             "generated_utc": NOW.isoformat(timespec="seconds"),
             "generated_et": NOW.astimezone(ET_TZ).strftime("%a %b %d %Y %I:%M %p %Z"),
             "scope": area or scan[0][0],
@@ -494,6 +746,8 @@ def collect(args):
             "models_used": {"deterministic": DET_MODELS, "ensemble": ENS_MODELS, "days": days_model} if not args.no_models else None,
             "errors": ERRORS,
         }
+        out["stories"] = build_stories(out)
+        return out
 
 
 # ---------------- in kết quả ----------------
@@ -501,6 +755,7 @@ def render(d, max_alerts):
     L = []
     w = L.append
     w(f"# DỮ LIỆU THỜI TIẾT MỸ — {d['scope']} — lấy lúc {d['generated_et']} ({d['generated_utc']} UTC)\n")
+    w(render_stories(d.get("stories") or []) + "\n")
 
     # 1. Cảnh báo
     al = d["alerts"]
