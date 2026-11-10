@@ -54,3 +54,13 @@ rồi mở http://localhost:8000
 - Bản đồ cảnh báo lưu hình dạng các vùng NWS trong trình duyệt 30 ngày, nên lần đầu xem một bang sẽ chậm hơn các lần sau.
 - GitHub có thể tự tắt workflow theo lịch nếu repo không có hoạt động trong 60 ngày; khi đó vào tab Actions bấm **Enable workflow**.
 - Muốn cập nhật app sau khi sửa: tải file mới lên repo, rồi tăng `VERSION` trong `sw.js` (ví dụ `v3` → `v4`) để điện thoại nhận bản mới.
+
+## Skill bản tin thời tiết cho Claude
+
+Thư mục `.claude/skills/ban-tin-thoi-tiet-my/` là skill để Claude tự tìm và tổng hợp bản tin thời tiết Mỹ bằng tiếng Việt:
+cảnh báo/dự báo từ NOAA–NWS (SPC, WPC, NHC, CPC), xác thực tin bằng nhà đài uy tín từng bang, khi không có cảnh báo thì
+dùng dự báo 7 ngày, radar và mô hình (HRRR, NAM, GFS, ECMWF, ensemble) để báo sớm.
+
+- Trong Claude Code mở repo này rồi gõ `/ban-tin-thoi-tiet-my Texas` (hoặc chỉ cần hỏi "bản tin thời tiết Florida hôm nay").
+- Script tự lấy dữ liệu: `python3 .claude/skills/ban-tin-thoi-tiet-my/scripts/tong_hop_nws.py --area TX`
+- Dùng trên claude.ai: nén thư mục `ban-tin-thoi-tiet-my` thành file .zip rồi tải lên ở **Settings → Capabilities → Skills**.
