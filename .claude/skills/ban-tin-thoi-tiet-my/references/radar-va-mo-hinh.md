@@ -21,7 +21,13 @@ Dùng để mô tả tình hình hiện tại và **báo sớm** sự kiện khi
 | Hướng dẫn NWS | NBM (National Blend of Models) | Gần với dự báo chính thức nhất |
 | Bão nhiệt đới | HAFS, HWRF/HMON (cũ), mô hình xoáy ECMWF/GFS, TCVN/HCCA (đồng thuận NHC) | Đường đi, cường độ — **luôn ưu tiên NHC** |
 
-## Trang xem mô hình
+## Số liệu mô hình dạng số (ưu tiên — đọc được chính xác)
+Trang bản đồ mô hình chủ yếu là ảnh, khó trích số chính xác. Dùng API số của Open-Meteo (miễn phí, không cần key) — script đã gọi sẵn:
+- Mô hình đơn: `https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,wind_gusts_10m_max&models=gfs_seamless,ecmwf_ifs025,icon_seamless,gem_seamless&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&forecast_days=10&timezone=auto`
+- Ensemble: `https://ensemble-api.open-meteo.com/v1/ensemble?...&models=gfs025` (hoặc `ecmwf_ifs025`) — mỗi thành viên là một cột `..._memberNN`; % thành viên vượt ngưỡng = xác suất.
+- Lưu ý: tuyết của mô hình (snowfall_sum) thường lệch nhiều; luôn đối chiếu WPC (xác suất tuyết, WSSI) trước khi nói con số.
+
+## Trang xem mô hình (ảnh — dùng để lấy hình minh họa cho video)
 | Trang | Địa chỉ |
 |---|---|
 | NOAA NOMADS (dữ liệu gốc) | `https://nomads.ncep.noaa.gov/` |

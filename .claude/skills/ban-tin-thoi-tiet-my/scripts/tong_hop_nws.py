@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
-"""Tổng hợp dữ liệu chính thức NOAA/NWS cho bản tin thời tiết Mỹ (tiếng Việt).
+"""Thu thập dữ liệu chính thức NOAA/NWS + số liệu mô hình cho bản tin thời tiết Mỹ (mặc định: toàn quốc).
 
 Ví dụ:
-  python3 tong_hop_nws.py --area TX            # một bang
-  python3 tong_hop_nws.py --area TX,OK,KS      # nhiều bang
-  python3 tong_hop_nws.py --area US            # toàn quốc
+  python3 tong_hop_nws.py                      # toàn quốc (mặc định)
+  python3 tong_hop_nws.py --area TX,OK         # một/nhiều bang
   python3 tong_hop_nws.py --point 29.76,-95.37 --name Houston
   python3 tong_hop_nws.py --city "Denver, CO"
-  python3 tong_hop_nws.py --area FL --json     # dữ liệu thô dạng JSON
+  python3 tong_hop_nws.py --no-models          # bỏ phần mô hình (nhanh hơn)
+  python3 tong_hop_nws.py --json               # dữ liệu thô
 
-Nguồn: api.weather.gov (cảnh báo, dự báo 7 ngày, AFD), SPC (Convective Outlook ngày 1–3),
-WPC (Excessive Rainfall Outlook ngày 1–3), NHC (bão đang hoạt động).
-Chỉ dùng thư viện chuẩn Python 3.9+. Mỗi nguồn chạy độc lập: một nguồn lỗi vẫn in phần còn lại.
+Nguồn chính thức: api.weather.gov (cảnh báo, dự báo 7 ngày, AFD, SPC Day 1–3 text, WPC discussions),
+SPC (GeoJSON nguy cơ, Mesoscale Discussion, Storm Reports), WPC (ERO), NHC (bão + Tropical Weather Outlook), CPC (6–10/8–14).
+Mô hình (tham khảo): Open-Meteo — GFS, ECMWF IFS, ICON, GEM và ensemble GEFS/ECMWF.
+Chỉ dùng thư viện chuẩn Python 3.9+. Mỗi nguồn chạy độc lập: nguồn lỗi được liệt kê ở cuối để kiểm tra tay.
 """
-import argparse, concurrent.futures as cf, datetime as dt, json, re, sys, urllib.parse, urllib.request
+import argparse, concurrent.futures as cf, csv, datetime as dt, html, io, json, re, sys, urllib.parse, urllib.request
+import xml.etree.ElementTree as ET
 
 try:
     from zoneinfo import ZoneInfo
-    VN = ZoneInfo("Asia/Ho_Chi_Minh")
+    ET_TZ = ZoneInfo("America/New_York")
 except Exception:  # pragma: no cover
-    VN = dt.timezone(dt.timedelta(hours=7))
+    ET_TZ = dt.timezone(dt.timedelta(hours=-5))
 
-UA = {"User-Agent": "thoi-tiet-my-skill (ban tin thoi tiet)", "Accept": "application/geo+json, application/json"}
+UA = {"User-Agent": "thoi-tiet-my-skill (weather briefing)", "Accept": "application/geo+json, application/json, */*"}
 NOW = dt.datetime.now(dt.timezone.utc)
 ERRORS = []
 
-# 2–3 thành phố chính mỗi bang (lat, lon) — dùng cho dự báo 7 ngày và kiểm tra vùng nguy cơ SPC/WPC.
+# Thành phố chính mỗi bang (lat, lon).
 CITIES = {
     "AL": [("Birmingham", 33.52, -86.81), ("Montgomery", 32.38, -86.30), ("Mobile", 30.69, -88.04), ("Huntsville", 34.73, -86.59)],
     "AK": [("Anchorage", 61.22, -149.90), ("Fairbanks", 64.84, -147.72), ("Juneau", 58.30, -134.42)],
@@ -83,9 +85,17 @@ CITIES = {
     "VI": [("Charlotte Amalie", 18.34, -64.93)],
     "GU": [("Hagatna", 13.48, 144.75)],
 }
-NATIONAL = ["New York", "Washington", "Atlanta", "Miami", "Chicago", "Dallas", "Houston", "Denver", "Phoenix", "Los Angeles", "Seattle", "Minneapolis"]
+CITY_STATE = {c[0]: st for st, v in CITIES.items() for c in v}
+# Bản tin toàn quốc: thành phố trải đều các vùng (dùng cho nguy cơ SPC/WPC và mô hình).
+NATIONAL_SCAN = ["Seattle", "Portland OR", "San Francisco", "Los Angeles", "Phoenix", "Las Vegas", "Salt Lake City", "Boise", "Billings",
+                 "Denver", "Albuquerque", "Bismarck", "Sioux Falls", "Minneapolis", "Omaha", "Kansas City", "Oklahoma City", "Dallas",
+                 "Houston", "San Antonio", "New Orleans", "Memphis", "Chicago", "Detroit", "St. Louis", "Nashville", "Indianapolis",
+                 "Columbus", "Atlanta", "Birmingham", "Miami", "Tampa", "Charlotte", "Raleigh", "Washington", "Philadelphia",
+                 "New York", "Boston", "Buffalo", "Pittsburgh", "Portland ME", "Anchorage", "Honolulu"]
+# Bản tin toàn quốc: thành phố lấy dự báo 7 ngày chính thức NWS.
+NATIONAL_FORECAST = ["New York", "Washington", "Atlanta", "Miami", "Chicago", "Minneapolis", "Dallas", "Houston", "Denver", "Phoenix",
+                     "Los Angeles", "Seattle"]
 
-# Thứ tự ưu tiên hiện tượng (nhỏ = nguy hiểm hơn). Không có trong danh sách → xếp theo severity.
 PRIORITY = [
     "Tornado Emergency", "Flash Flood Emergency", "Extreme Wind Warning", "Tornado Warning", "Flash Flood Warning", "Storm Surge Warning",
     "Hurricane Warning", "Severe Thunderstorm Warning", "Tsunami Warning", "Blizzard Warning", "Ice Storm Warning", "Tropical Storm Warning",
@@ -98,13 +108,24 @@ PRIORITY = [
 ]
 SEV = {"Extreme": 0, "Severe": 1, "Moderate": 2, "Minor": 3, "Unknown": 4}
 SPC_RANK = {"TSTM": 0, "MRGL": 1, "SLGT": 2, "ENH": 3, "MDT": 4, "HIGH": 5}
-SPC_VI = {"TSTM": "dông thường", "MRGL": "1/5 Marginal", "SLGT": "2/5 Slight", "ENH": "3/5 Enhanced", "MDT": "4/5 Moderate", "HIGH": "5/5 High"}
-ERO_RANK = {"MRGL": 1, "SLGT": 2, "MDT": 3, "HIGH": 4}
-ERO_VI = {1: "1/4 Marginal", 2: "2/4 Slight", 3: "3/4 Moderate", 4: "4/4 High"}
+SPC_TXT = {"TSTM": "General t-storms", "MRGL": "Marginal (1/5)", "SLGT": "Slight (2/5)", "ENH": "Enhanced (3/5)", "MDT": "Moderate (4/5)", "HIGH": "High (5/5)"}
+ERO_TXT = {1: "Marginal (1/4)", 2: "Slight (2/4)", 3: "Moderate (3/4)", 4: "High (4/4)"}
+
+# Mô hình Open-Meteo và ngưỡng "tín hiệu" (đơn vị Mỹ).
+DET_MODELS = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "gem_seamless"]
+ENS_MODELS = ["gfs025", "ecmwf_ifs025"]
+DAILY = ["temperature_2m_max", "temperature_2m_min", "precipitation_sum", "snowfall_sum", "wind_gusts_10m_max"]
+THRESH = {  # tên: (biến, phép so sánh, ngưỡng, mô tả)
+    "heavy_rain": ("precipitation_sum", ">=", 1.5, "mưa ≥1.5 in/ngày"),
+    "snow": ("snowfall_sum", ">=", 3.0, "tuyết ≥3 in/ngày"),
+    "wind": ("wind_gusts_10m_max", ">=", 50.0, "gió giật ≥50 mph"),
+    "heat": ("temperature_2m_max", ">=", 100.0, "cao nhất ≥100°F"),
+    "cold": ("temperature_2m_min", "<=", 10.0, "thấp nhất ≤10°F"),
+}
 
 
 # ---------------- tiện ích ----------------
-def get(url, as_json=True, timeout=30):
+def get(url, as_json=True, timeout=40):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
@@ -114,8 +135,8 @@ def get(url, as_json=True, timeout=30):
 def safe(label, fn, *a, **kw):
     try:
         return fn(*a, **kw)
-    except Exception as e:  # ghi lại để người dùng biết phải kiểm tra tay
-        ERRORS.append(f"{label}: {type(e).__name__}: {e}")
+    except Exception as e:
+        ERRORS.append(f"{label}: {type(e).__name__}: {str(e)[:160]}")
         return None
 
 
@@ -129,27 +150,20 @@ def parse_time(s):
 
 
 def fmt_time(s):
-    """'2026-11-10T18:00:00-06:00' → '18:00 10/11 (giờ đ.p. UTC-6) = 07:00 11/11 giờ VN'."""
+    """Giờ địa phương của sản phẩm + giờ ET (chuẩn cho bản tin toàn quốc)."""
     t = parse_time(s)
     if not t:
         return "—"
+    e = t.astimezone(ET_TZ)
+    loc = t.strftime("%a %b %d %I:%M %p").replace(" 0", " ")
     off = t.utcoffset()
     h = int(off.total_seconds() // 3600) if off is not None else 0
-    v = t.astimezone(VN)
-    return f"{t:%H:%M %d/%m} (UTC{h:+d}) = {v:%H:%M %d/%m} giờ VN"
+    return f"{loc} (UTC{h:+d}) = {e.strftime('%a %I:%M %p').replace(' 0', ' ')} {e.tzname()}"
 
 
-def f2c(f):
-    return round((f - 32) * 5 / 9)
-
-
-def mph_text(s):
-    """'10 to 15 mph' → '10 to 15 mph (16–24 km/h)'."""
-    nums = [int(n) for n in re.findall(r"\d+", s or "")]
-    if not nums:
-        return s or ""
-    kmh = "–".join(str(round(n * 1.609)) for n in nums)
-    return f"{s} ({kmh} km/h)"
+def clean(text, n=None):
+    t = re.sub(r"[ \t]+", " ", text or "").strip()
+    return t if n is None or len(t) <= n else t[:n] + "…"
 
 
 def in_ring(x, y, ring):
@@ -168,13 +182,10 @@ def in_geom(lon, lat, geom):
     if not geom:
         return False
     polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"] if geom["type"] == "MultiPolygon" else []
-    for poly in polys:
-        if poly and in_ring(lon, lat, poly[0]) and not any(in_ring(lon, lat, h) for h in poly[1:]):
-            return True
-    return False
+    return any(p and in_ring(lon, lat, p[0]) and not any(in_ring(lon, lat, h) for h in p[1:]) for p in polys)
 
 
-# ---------------- nguồn dữ liệu ----------------
+# ---------------- NWS ----------------
 def alerts(area=None, point=None):
     q = {"status": "actual"}
     if area and area != "US":
@@ -189,305 +200,498 @@ def alerts(area=None, point=None):
         if end and end < NOW:
             continue
         params = p.get("parameters") or {}
+        ev = p.get("event", "")
+        desc = (p.get("description") or "").strip()
+        if ev == "Tornado Warning" and "TORNADO EMERGENCY" in desc.upper():
+            ev = "Tornado Emergency"
+        if ev == "Flash Flood Warning" and "FLASH FLOOD EMERGENCY" in desc.upper():
+            ev = "Flash Flood Emergency"
+        if "PARTICULARLY DANGEROUS SITUATION" in desc.upper() and "Watch" in ev:
+            ev = "PDS " + ev
+        ugc = (p.get("geocode") or {}).get("UGC") or []
         out.append({
-            "event": p.get("event", ""), "severity": p.get("severity", "Unknown"), "urgency": p.get("urgency"),
-            "certainty": p.get("certainty"), "area": p.get("areaDesc", ""), "sender": p.get("senderName", ""),
+            "event": ev, "severity": p.get("severity", "Unknown"), "urgency": p.get("urgency"),
+            "states": sorted({u[:2] for u in ugc}), "area": p.get("areaDesc", ""), "sender": p.get("senderName", ""),
             "onset": p.get("onset") or p.get("effective"), "ends": p.get("ends") or p.get("expires"),
             "headline": (params.get("NWSheadline") or [p.get("headline") or ""])[0],
             "maxWindGust": (params.get("maxWindGust") or [None])[0], "maxHailSize": (params.get("maxHailSize") or [None])[0],
             "tornadoDetection": (params.get("tornadoDetection") or [None])[0],
-            "description": (p.get("description") or "").strip(), "instruction": (p.get("instruction") or "").strip(),
-            "id": p.get("id"),
+            "description": desc, "id": p.get("id"),
         })
 
     def rank(a):
-        ev = a["event"]
-        desc = a["description"].upper()
-        if ev == "Tornado Warning" and "TORNADO EMERGENCY" in desc:
-            ev = "Tornado Emergency"
-        if ev == "Flash Flood Warning" and "FLASH FLOOD EMERGENCY" in desc:
-            ev = "Flash Flood Emergency"
-        a["event_display"] = ev if ev != a["event"] else a["event"]
-        pr = PRIORITY.index(ev) if ev in PRIORITY else len(PRIORITY)
-        return (pr, SEV.get(a["severity"], 4))
+        ev = a["event"].replace("PDS ", "")
+        return (PRIORITY.index(ev) if ev in PRIORITY else len(PRIORITY), SEV.get(a["severity"], 4))
 
     out.sort(key=rank)
     return out
 
 
-def spc_day(day):
-    d = get(f"https://www.spc.noaa.gov/products/outlook/day{day}otlk_cat.nolyr.geojson")
-    return d.get("features", [])
+def point_info(lat, lon):
+    p = get(f"https://api.weather.gov/points/{lat:.4f},{lon:.4f}")["properties"]
+    return {"wfo": p.get("gridId"), "forecast": p.get("forecast"), "tz": p.get("timeZone")}
 
 
-def ero_day(day):
-    d = get(f"https://www.wpc.ncep.noaa.gov/exper/eromap/geojson/Day{day}_Latest.geojson")
-    return d.get("features", [])
+def forecast(url, days):
+    return get(url)["properties"]["periods"][: days * 2]
+
+
+def latest_product(ptype, loc=None):
+    url = f"https://api.weather.gov/products/types/{ptype}" + (f"/locations/{loc}" if loc else "")
+    g = get(url).get("@graph") or []
+    if not g:
+        return None
+    return get(f"https://api.weather.gov/products/{g[0]['id']}")
+
+
+def afd(wfo, chars=1500):
+    prod = latest_product("AFD", wfo)
+    if not prod:
+        return None
+    text = prod.get("productText", "")
+    m = re.search(r"\.(KEY MESSAGES|SYNOPSIS|WHAT HAS CHANGED)[^\n]*\n(.*?)(?=\n&&|\n\.[A-Z][A-Z /]+\.\.\.)", text, re.S)
+    return {"wfo": wfo, "issued": prod.get("issuanceTime"), "text": clean(m.group(0) if m else text, chars)}
+
+
+def spc_text(day):
+    """Đoạn SUMMARY của SPC Day 1/2/3 Convective Outlook (SWODY1/2/3)."""
+    prod = latest_product(f"SWODY{day}")
+    if not prod:
+        return None
+    text = prod.get("productText", "")
+    m = re.search(r"\.\.\.SUMMARY\.\.\.\s*(.*?)(?:\n\s*\n|\n\.\.\.)", text, re.S)
+    risk = re.findall(r"\.\.\.THERE IS A[N]? (\w+(?: \w+)?) RISK[^.]*?\.\.\.", text)
+    return {"issued": prod.get("issuanceTime"), "summary": clean((m.group(1) if m else text[:600]).replace("\n", " "), 700),
+            "headlines": [clean(h) for h in risk][:3]}
+
+
+def wpc_disc(ptype, chars=2500):
+    """WPC Short Range (PMDSPD) / Extended (PMDEPD) Forecast Discussion."""
+    prod = latest_product(ptype)
+    if not prod:
+        return None
+    text = prod.get("productText", "")
+    body = re.split(r"\n\s*\n", text, maxsplit=3)
+    body = "\n\n".join(body[2:]) if len(body) > 3 else text
+    return {"issued": prod.get("issuanceTime"), "text": clean(body, chars)}
+
+
+# ---------------- SPC / WPC / NHC / CPC ----------------
+def spc_geo(day):
+    return get(f"https://www.spc.noaa.gov/products/outlook/day{day}otlk_cat.nolyr.geojson").get("features", [])
+
+
+def ero_geo(day):
+    return get(f"https://www.wpc.ncep.noaa.gov/exper/eromap/geojson/Day{day}_Latest.geojson").get("features", [])
 
 
 def spc_at(features, lat, lon):
     best = None
     for f in features or []:
         lab = (f.get("properties") or {}).get("LABEL")
-        if lab in SPC_RANK and in_geom(lon, lat, f.get("geometry")):
-            if best is None or SPC_RANK[lab] > SPC_RANK[best]:
-                best = lab
+        if lab in SPC_RANK and in_geom(lon, lat, f.get("geometry")) and (best is None or SPC_RANK[lab] > SPC_RANK[best]):
+            best = lab
     return best
 
 
 def ero_at(features, lat, lon):
     best = 0
     for f in features or []:
-        p = f.get("properties") or {}
-        txt = " ".join(str(v) for v in p.values()).upper()
-        lvl = max([r for k, r in ERO_RANK.items() if re.search(rf"\b{k}", txt)] + [0])
-        if not lvl:
-            m = re.search(r"\b(MARGINAL|SLIGHT|MODERATE|HIGH)\b", txt)
-            lvl = {"MARGINAL": 1, "SLIGHT": 2, "MODERATE": 3, "HIGH": 4}.get(m.group(1), 0) if m else 0
+        txt = " ".join(str(v) for v in (f.get("properties") or {}).values()).upper()
+        m = re.search(r"\b(HIGH|MODERATE|SLIGHT|MARGINAL|MDT|SLGT|MRGL)\b", txt)
+        lvl = {"MARGINAL": 1, "MRGL": 1, "SLIGHT": 2, "SLGT": 2, "MODERATE": 3, "MDT": 3, "HIGH": 4}.get(m.group(1), 0) if m else 0
         if lvl > best and in_geom(lon, lat, f.get("geometry")):
             best = lvl
     return best
 
 
+def rss(url, max_items=10):
+    root = ET.fromstring(get(url, as_json=False))
+    out = []
+    for it in root.iter("item"):
+        out.append({k: (it.findtext(k) or "").strip() for k in ("title", "link", "pubDate", "description")})
+    return out[:max_items]
+
+
+def spc_mds():
+    items = rss("https://www.spc.noaa.gov/products/spcmdrss.xml", 15)
+    return [{"title": i["title"], "link": i["link"], "pubDate": i["pubDate"],
+             "text": clean(re.sub(r"<[^>]+>", " ", html.unescape(i["description"])), 500)} for i in items]
+
+
+def storm_reports(which):
+    """SPC Storm Reports (12Z–12Z). which = today | yesterday."""
+    raw = get(f"https://www.spc.noaa.gov/climo/reports/{which}_filtered.csv", as_json=False)
+    kind, out = None, {"tornado": [], "wind": [], "hail": []}
+    for row in csv.reader(io.StringIO(raw)):
+        if not row:
+            continue
+        if row[0] == "Time":
+            kind = {"F_Scale": "tornado", "Speed": "wind", "Size": "hail"}.get(row[1])
+            continue
+        if kind and len(row) >= 8:
+            out[kind].append({"time": row[0], "mag": row[1], "loc": row[2], "county": row[3], "state": row[4], "comments": row[7][:200]})
+    return out
+
+
 def nhc():
-    d = get("https://www.nhc.noaa.gov/CurrentStorms.json")
-    return d.get("activeStorms", [])
+    return get("https://www.nhc.noaa.gov/CurrentStorms.json").get("activeStorms", [])
 
 
-def point_info(lat, lon):
-    p = get(f"https://api.weather.gov/points/{lat:.4f},{lon:.4f}")["properties"]
-    rel = (p.get("relativeLocation") or {}).get("properties") or {}
-    return {"wfo": p.get("gridId"), "forecast": p.get("forecast"), "tz": p.get("timeZone"),
-            "place": f"{rel.get('city', '')}, {rel.get('state', '')}".strip(", ")}
+def nhc_two():
+    out = {}
+    for basin, url in (("Atlantic", "https://www.nhc.noaa.gov/index-at.xml"), ("East Pacific", "https://www.nhc.noaa.gov/index-ep.xml")):
+        for it in rss(url, 30):
+            if "Tropical Weather Outlook" in it["title"]:
+                out[basin] = clean(re.sub(r"<[^>]+>", " ", html.unescape(it["description"])), 1200)
+                break
+    return out
 
 
-def forecast(url, days):
-    periods = get(url)["properties"]["periods"]
-    return periods[: days * 2]
+def cpc(kind):
+    """CPC 6–10 / 8–14 day prognostic discussion (trích)."""
+    page = get("https://www.cpc.ncep.noaa.gov/products/predictions/610day/fxus06.html", as_json=False)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", page))
+    text = re.sub(r"\s+", " ", text)
+    m = re.search(r"(6-10 DAY OUTLOOK FOR .*?)(?=8-14 DAY OUTLOOK FOR)", text) if kind == "610" else re.search(r"(8-14 DAY OUTLOOK FOR .*?)(?=FORECASTER|THE NEXT SET|$)", text)
+    return clean(m.group(1) if m else text[:1500], 1500)
 
 
-def afd(wfo, chars=1800):
-    lst = get(f"https://api.weather.gov/products/types/AFD/locations/{wfo}")
-    g = lst.get("@graph") or []
-    if not g:
-        return None
-    prod = get(f"https://api.weather.gov/products/{g[0]['id']}")
-    text = prod.get("productText", "")
-    m = re.search(r"\.(KEY MESSAGES|SYNOPSIS|WHAT HAS CHANGED)[^\n]*\n(.*?)(?=\n&&|\n\.[A-Z][A-Z /]+\.\.\.)", text, re.S)
-    body = (m.group(0) if m else text)
-    body = re.sub(r"[ \t]+", " ", body).strip()
-    return {"wfo": wfo, "issued": prod.get("issuanceTime"), "text": body[:chars] + ("…" if len(body) > chars else "")}
+# ---------------- Mô hình (Open-Meteo) ----------------
+def om_det(lat, lon, days):
+    q = {"latitude": lat, "longitude": lon, "daily": ",".join(DAILY), "models": ",".join(DET_MODELS), "forecast_days": days,
+         "temperature_unit": "fahrenheit", "wind_speed_unit": "mph", "precipitation_unit": "inch", "timezone": "auto"}
+    return get("https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q))
 
 
-def geocode(name):
-    q = name.split(",")[0].strip()
-    st = name.split(",")[1].strip().upper() if "," in name else None
-    d = get("https://geocoding-api.open-meteo.com/v1/search?" + urllib.parse.urlencode(
-        {"name": q, "count": 10, "countryCode": "US", "language": "en"}))
-    res = d.get("results") or []
-    if st:
-        res = [r for r in res if st in (r.get("admin1_code") or r.get("admin1", "")).upper()
-               or STATE_NAMES.get(st, "~").upper() == (r.get("admin1") or "").upper()] or res
-    if not res:
-        raise ValueError(f"không tìm thấy '{name}'")
-    r = res[0]
-    return r["name"], r["latitude"], r["longitude"]
+def om_ens(lat, lon, model, days):
+    q = {"latitude": lat, "longitude": lon, "daily": ",".join(DAILY), "models": model, "forecast_days": days,
+         "temperature_unit": "fahrenheit", "wind_speed_unit": "mph", "precipitation_unit": "inch", "timezone": "auto"}
+    return get("https://ensemble-api.open-meteo.com/v1/ensemble?" + urllib.parse.urlencode(q))
 
 
-STATE_NAMES = {"AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut",
-               "DE": "Delaware", "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
-               "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-               "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
-               "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
-               "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
-               "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
-               "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
-               "PR": "Puerto Rico", "VI": "U.S. Virgin Islands", "GU": "Guam"}
+def _hit(v, op, th):
+    return v is not None and (v >= th if op == ">=" else v <= th)
+
+
+def model_signals(name, det, ens):
+    """Trả về danh sách tín hiệu: thành phố, ngày, hiện tượng, số mô hình đồng ý, % ensemble, khoảng giá trị."""
+    out = []
+    if not det:
+        return out
+    daily = det.get("daily") or {}
+    dates = daily.get("time") or []
+    for key, (var, op, th, label) in THRESH.items():
+        for i, day in enumerate(dates):
+            vals = {}
+            for m in DET_MODELS:
+                arr = daily.get(f"{var}_{m}")
+                if arr and i < len(arr) and arr[i] is not None:
+                    vals[m] = arr[i]
+            if not vals:
+                continue
+            agree = [m for m, v in vals.items() if _hit(v, op, th)]
+            if not agree:
+                continue
+            ens_pct = {}
+            for em, ed in (ens or {}).items():
+                ed = (ed or {}).get("daily") or {}
+                members = [ed[k][i] for k in ed if k.startswith(var) and isinstance(ed[k], list) and i < len(ed[k]) and ed[k][i] is not None]
+                if members:
+                    ens_pct[em] = round(100 * sum(_hit(v, op, th) for v in members) / len(members))
+            out.append({"place": name, "date": day, "day_index": i + 1, "hazard": key, "label": label,
+                        "agree": f"{len(agree)}/{len(vals)}", "models_hit": agree,
+                        "range": f"{min(vals.values()):.1f}–{max(vals.values()):.1f}", "ensemble_pct": ens_pct})
+    return out
 
 
 # ---------------- tổng hợp ----------------
-def collect(args):
-    if args.point or args.city:
-        if args.city:
-            name, lat, lon = geocode(args.city)
-        else:
-            lat, lon = (float(x) for x in args.point.split(","))
-            name = args.name or f"{lat:.2f},{lon:.2f}"
-        places, area, point = [(name, lat, lon)], None, (lat, lon)
-    else:
-        area = args.area.upper().replace(" ", "")
-        point = None
-        if area == "US":
-            allc = {c[0]: c for v in CITIES.values() for c in v}
-            places = [allc[n] for n in NATIONAL if n in allc]
-        else:
-            places = []
-            for st in area.split(","):
-                if st not in CITIES:
-                    raise SystemExit(f"Mã bang không hợp lệ: {st}")
-                places += CITIES[st][: args.cities]
+def resolve_places(args):
+    if args.city:
+        q = args.city.split(",")[0].strip()
+        d = get("https://geocoding-api.open-meteo.com/v1/search?" + urllib.parse.urlencode({"name": q, "count": 10, "countryCode": "US"}))
+        res = d.get("results") or []
+        if "," in args.city:
+            st = args.city.split(",")[1].strip().lower()
+            res = [r for r in res if st in (r.get("admin1") or "").lower() or st == (r.get("admin1_code") or "").lower()] or res
+        if not res:
+            raise SystemExit(f"Không tìm thấy thành phố: {args.city}")
+        r = res[0]
+        return None, (r["latitude"], r["longitude"]), [(r["name"], r["latitude"], r["longitude"])], [r["name"]]
+    if args.point:
+        lat, lon = (float(x) for x in args.point.split(","))
+        name = args.name or f"{lat:.2f},{lon:.2f}"
+        return None, (lat, lon), [(name, lat, lon)], [name]
+    area = (args.area or "US").upper().replace(" ", "")
+    allc = {c[0]: c for v in CITIES.values() for c in v}
+    if area == "US":
+        return "US", None, [allc[n] for n in NATIONAL_SCAN], NATIONAL_FORECAST
+    scan = []
+    for st in area.split(","):
+        if st not in CITIES:
+            raise SystemExit(f"Mã bang không hợp lệ: {st}")
+        scan += CITIES[st]
+    return area, None, scan, [c[0] for st in area.split(",") for c in CITIES[st][: args.cities]]
 
-    with cf.ThreadPoolExecutor(max_workers=12) as ex:
-        f_alerts = ex.submit(safe, "Cảnh báo NWS", alerts, area, point)
-        f_spc = {d: ex.submit(safe, f"SPC ngày {d}", spc_day, d) for d in (1, 2, 3)}
-        f_ero = {d: ex.submit(safe, f"WPC ERO ngày {d}", ero_day, d) for d in (1, 2, 3)}
-        f_nhc = ex.submit(safe, "NHC", nhc)
-        f_pts = {p[0]: ex.submit(safe, f"points {p[0]}", point_info, p[1], p[2]) for p in places}
+
+def collect(args):
+    area, point, scan, fc_names = resolve_places(args)
+    allc = {c[0]: c for c in scan}
+    days_model = args.model_days
+    with cf.ThreadPoolExecutor(max_workers=16) as ex:
+        F = lambda label, fn, *a: ex.submit(safe, label, fn, *a)
+        f_alerts = F("Cảnh báo NWS", alerts, area, point)
+        f_spc_geo = {d: F(f"SPC GeoJSON ngày {d}", spc_geo, d) for d in (1, 2, 3)}
+        f_spc_txt = {d: F(f"SPC text ngày {d} (SWODY{d})", spc_text, d) for d in (1, 2, 3)}
+        f_ero = {d: F(f"WPC ERO ngày {d}", ero_geo, d) for d in (1, 2, 3)}
+        f_md = F("SPC Mesoscale Discussions", spc_mds)
+        f_rep = {w: F(f"SPC Storm Reports {w}", storm_reports, w) for w in ("today", "yesterday")}
+        f_nhc = F("NHC bão", nhc)
+        f_two = F("NHC Tropical Weather Outlook", nhc_two)
+        f_wpc = {p: F(f"WPC {p}", wpc_disc, p) for p in (("PMDSPD", "PMDEPD") if area == "US" else ("PMDSPD",))}
+        f_cpc = {k: F(f"CPC {k}", cpc, k) for k in ("610", "814")}
+        f_pts = {n: F(f"points {n}", point_info, allc[n][1], allc[n][2]) for n in fc_names if n in allc}
+        f_det, f_ens = {}, {}
+        if not args.no_models:
+            for n, lat, lon in scan:
+                f_det[n] = F(f"Open-Meteo {n}", om_det, lat, lon, days_model)
+                f_ens[n] = {m: F(f"Ensemble {m} {n}", om_ens, lat, lon, m, days_model) for m in ENS_MODELS}
+
         pts = {k: v.result() for k, v in f_pts.items()}
-        f_fc = {k: ex.submit(safe, f"dự báo {k}", forecast, v["forecast"], args.days) for k, v in pts.items() if v and v.get("forecast")}
+        f_fc = {k: F(f"dự báo {k}", forecast, v["forecast"], args.days) for k, v in pts.items() if v and v.get("forecast")}
         wfos = []
         for v in pts.values():
-            if v and v["wfo"] and v["wfo"] not in wfos:
+            if v and v.get("wfo") and v["wfo"] not in wfos:
                 wfos.append(v["wfo"])
-        f_afd = {w: ex.submit(safe, f"AFD {w}", afd, w) for w in wfos[: args.afd]}
+        f_afd = {w: F(f"AFD {w}", afd, w) for w in wfos[: args.afd]}
 
-        spc = {d: f.result() for d, f in f_spc.items()}
+        spc = {d: f.result() for d, f in f_spc_geo.items()}
         ero = {d: f.result() for d, f in f_ero.items()}
-        risk = []
-        for name, lat, lon in places:
-            risk.append({"place": name,
-                         "spc": {d: spc_at(spc[d], lat, lon) for d in spc if spc[d] is not None},
-                         "ero": {d: ero_at(ero[d], lat, lon) for d in ero if ero[d] is not None}})
+        risk = [{"place": n, "state": CITY_STATE.get(n, ""),
+                 "spc": {d: spc_at(spc[d], lat, lon) for d in spc if spc[d] is not None},
+                 "ero": {d: ero_at(ero[d], lat, lon) for d in ero if ero[d] is not None}} for n, lat, lon in scan]
+        signals = []
+        for n in f_det:
+            signals += model_signals(n, f_det[n].result(), {m: f.result() for m, f in f_ens[n].items()})
+
         return {
             "generated_utc": NOW.isoformat(timespec="seconds"),
-            "generated_vn": NOW.astimezone(VN).strftime("%H:%M %d/%m/%Y"),
-            "scope": area or places[0][0],
+            "generated_et": NOW.astimezone(ET_TZ).strftime("%a %b %d %Y %I:%M %p %Z"),
+            "scope": area or scan[0][0],
             "alerts": f_alerts.result(),
+            "spc_text": {d: f.result() for d, f in f_spc_txt.items()},
+            "spc_max": {d: max([SPC_RANK.get((f.get("properties") or {}).get("LABEL"), -1) for f in spc[d]] + [-1]) for d in spc if spc[d] is not None},
             "risk": risk,
-            "spc_max": {d: max([SPC_RANK.get((f.get("properties") or {}).get("LABEL"), -1) for f in spc[d]] + [-1])
-                        for d in spc if spc[d] is not None},
-            "nhc": f_nhc.result(),
+            "mds": f_md.result(),
+            "reports": {w: f.result() for w, f in f_rep.items()},
+            "nhc": f_nhc.result(), "nhc_two": f_two.result(),
+            "wpc": {p: f.result() for p, f in f_wpc.items()},
+            "cpc": {k: f.result() for k, f in f_cpc.items()},
             "points": pts,
             "forecasts": {k: f.result() for k, f in f_fc.items()},
             "afd": [f.result() for f in f_afd.values() if f.result()],
+            "signals": signals,
+            "models_used": {"deterministic": DET_MODELS, "ensemble": ENS_MODELS, "days": days_model} if not args.no_models else None,
             "errors": ERRORS,
         }
 
 
+# ---------------- in kết quả ----------------
 def render(d, max_alerts):
     L = []
     w = L.append
-    w(f"# DỮ LIỆU NWS/NOAA — {d['scope']} — lấy lúc {d['generated_vn']} giờ VN ({d['generated_utc']} UTC)\n")
+    w(f"# DỮ LIỆU THỜI TIẾT MỸ — {d['scope']} — lấy lúc {d['generated_et']} ({d['generated_utc']} UTC)\n")
 
+    # 1. Cảnh báo
     al = d["alerts"]
-    w("## 1. Cảnh báo đang hiệu lực [api.weather.gov]")
+    w("## 1. Cảnh báo NWS đang hiệu lực [OFFICIAL]")
     if al is None:
-        w("- LỖI: không lấy được cảnh báo → kiểm tra tay https://www.weather.gov/ hoặc https://api.weather.gov/alerts/active")
+        w("- LỖI: không lấy được → kiểm tra https://www.weather.gov/ hoặc https://api.weather.gov/alerts/active")
     elif not al:
-        w("- KHÔNG có cảnh báo/khuyến cáo nào đang hiệu lực. → Dùng Nhánh B (dự báo 7 ngày + mô hình).")
+        w("- KHÔNG có cảnh báo/khuyến cáo nào đang hiệu lực.")
     else:
-        cnt = {}
+        cnt, by_state = {}, {}
         for a in al:
-            cnt[a["event_display"]] = cnt.get(a["event_display"], 0) + 1
-        w("- Tổng: " + "; ".join(f"{k} ×{v}" for k, v in sorted(cnt.items(), key=lambda kv: PRIORITY.index(kv[0]) if kv[0] in PRIORITY else 999)))
+            cnt[a["event"]] = cnt.get(a["event"], 0) + 1
+            for s in a["states"]:
+                by_state.setdefault(a["event"], set()).add(s)
+        order = lambda ev: PRIORITY.index(ev.replace("PDS ", "")) if ev.replace("PDS ", "") in PRIORITY else 999
+        w(f"- Tổng {len(al)} sản phẩm. Theo loại (số lượng → bang):")
+        for ev in sorted(cnt, key=order):
+            w(f"  - {ev} ×{cnt[ev]} → {', '.join(sorted(by_state.get(ev, [])))}")
         w("")
-        seen = set()
-        shown = 0
+        seen, shown = set(), 0
         for a in al:
-            key = (a["event_display"], a["area"][:80], a["ends"])
+            key = (a["event"], a["area"][:80], a["ends"])
             if key in seen:
                 continue
             seen.add(key)
             if shown >= max_alerts:
-                w(f"- … còn {len(al) - shown} cảnh báo khác (dùng --max-alerts hoặc --json)")
+                w(f"- … còn nữa (dùng --max-alerts hoặc --json)")
                 break
             shown += 1
-            extra = []
-            if a["maxWindGust"]:
-                extra.append(f"gió giật {mph_text(a['maxWindGust'])}")
-            if a["maxHailSize"]:
-                try:
-                    extra.append(f"mưa đá {a['maxHailSize']} inch ({float(a['maxHailSize']) * 2.54:.1f} cm)")
-                except ValueError:
-                    extra.append(f"mưa đá {a['maxHailSize']}")
-            if a["tornadoDetection"]:
-                extra.append(f"lốc xoáy: {a['tornadoDetection']}")
-            w(f"### {a['event_display']} [{a['severity']}/{a['urgency']}] — {a['sender']}")
-            w(f"- Khu vực: {a['area'][:400]}")
-            w(f"- Hiệu lực: {fmt_time(a['onset'])} → {fmt_time(a['ends'])}")
+            extra = [x for x in (a["maxWindGust"] and f"gusts {a['maxWindGust']}", a["maxHailSize"] and f'hail {a["maxHailSize"]}"',
+                                 a["tornadoDetection"] and f"tornado {a['tornadoDetection']}") if x]
+            w(f"### {a['event']} — {', '.join(a['states'])} — {a['sender']} [{a['severity']}/{a['urgency']}]")
+            w(f"- Area: {clean(a['area'], 350)}")
+            w(f"- Valid: {fmt_time(a['onset'])} → {fmt_time(a['ends'])}")
             if extra:
                 w("- " + "; ".join(extra))
             if a["headline"]:
-                w(f"- Tiêu đề: {a['headline'][:300]}")
-            desc = re.sub(r"\s+", " ", a["description"])[:500]
-            if desc:
-                w(f"- Mô tả: {desc}{'…' if len(a['description']) > 500 else ''}")
+                w(f"- Headline: {clean(a['headline'], 300)}")
+            if a["description"]:
+                w(f"- Text: {clean(re.sub(chr(10), ' ', a['description']), 450)}")
             w("")
 
-    w("\n## 2. Nguy cơ tại các thành phố [SPC Convective Outlook • WPC Excessive Rainfall]")
-    if d["spc_max"]:
-        w("- Mức cao nhất toàn quốc SPC: " + ", ".join(
-            f"ngày {k}: {SPC_VI.get([l for l, r in SPC_RANK.items() if r == v][0], '—') if v >= 0 else 'không có dông'}"
-            for k, v in sorted(d["spc_max"].items())))
-    w("| Thành phố | SPC ngày 1 | SPC ngày 2 | SPC ngày 3 | ERO ngày 1 | ERO ngày 2 | ERO ngày 3 |")
-    w("|---|---|---|---|---|---|---|")
-    for r in d["risk"]:
-        s = [SPC_VI.get(r["spc"].get(k), "—") if k in r["spc"] else "lỗi" for k in (1, 2, 3)]
-        e = [ERO_VI.get(r["ero"].get(k), "—") if k in r["ero"] else "lỗi" for k in (1, 2, 3)]
-        w(f"| {r['place']} | " + " | ".join(s + e) + " |")
+    # 2. SPC
+    w("\n## 2. Dông mạnh / lốc xoáy — SPC [OFFICIAL]")
+    for day in (1, 2, 3):
+        t = (d["spc_text"] or {}).get(day)
+        mx = d["spc_max"].get(day)
+        lvl = next((SPC_TXT[k] for k, r in SPC_RANK.items() if r == mx), "none") if mx is not None and mx >= 0 else ("none" if mx is not None else "?")
+        w(f"- **Day {day}** — mức cao nhất: {lvl}" + (f" — issued {fmt_time(t['issued'])}" if t else ""))
+        if t:
+            for h in t["headlines"]:
+                w(f"  - {h}")
+            w(f"  - Summary: {t['summary']}")
+    w("- Day 4–8: xem tay https://www.spc.noaa.gov/products/exper/day4-8/")
+    mds = d.get("mds")
+    if mds:
+        w("\n**Mesoscale Discussions gần nhất:**")
+        for m in mds[:8]:
+            w(f"- {m['title']} ({m['pubDate']}) — {m['text'][:260]} {m['link']}")
+    for which in ("today", "yesterday"):
+        r = (d.get("reports") or {}).get(which)
+        if r is None:
+            continue
+        lab = "hôm nay (từ 12Z)" if which == "today" else "hôm qua (12Z–12Z)"
+        w(f"\n**Storm Reports {lab}:** tornado {len(r['tornado'])}, wind {len(r['wind'])}, hail {len(r['hail'])} (báo cáo sơ bộ, chưa phải kết quả khảo sát)")
+        for k in ("tornado", "wind", "hail"):
+            if r[k]:
+                st = {}
+                for x in r[k]:
+                    st[x["state"]] = st.get(x["state"], 0) + 1
+                w(f"  - {k}: " + ", ".join(f"{s} {n}" for s, n in sorted(st.items(), key=lambda kv: -kv[1])))
+        big_hail = sorted([x for x in r["hail"] if x["mag"].isdigit()], key=lambda x: -int(x["mag"]))[:3]
+        big_wind = sorted([x for x in r["wind"] if x["mag"].isdigit()], key=lambda x: -int(x["mag"]))[:3]
+        for x in big_hail:
+            w(f"  - hail {int(x['mag']) / 100:.2f}\" — {x['loc']}, {x['county']} Co., {x['state']} ({x['time']}Z)")
+        for x in big_wind:
+            w(f"  - wind {x['mag']} mph — {x['loc']}, {x['county']} Co., {x['state']} ({x['time']}Z)")
+        for x in r["tornado"][:5]:
+            w(f"  - tornado — {x['loc']}, {x['county']} Co., {x['state']} ({x['time']}Z): {x['comments'][:140]}")
 
-    w("\n## 3. Bão nhiệt đới [NHC]")
+    # 3. Nguy cơ tại các thành phố
+    w("\n## 3. Nguy cơ tại các thành phố [SPC Convective Outlook • WPC Excessive Rainfall] [OFFICIAL]")
+    w("| City | ST | SPC D1 | SPC D2 | SPC D3 | ERO D1 | ERO D2 | ERO D3 |")
+    w("|---|---|---|---|---|---|---|---|")
+    rows = 0
+    for r in d["risk"]:
+        s = [SPC_TXT.get(r["spc"].get(k), "—") if k in r["spc"] else "err" for k in (1, 2, 3)]
+        e = [ERO_TXT.get(r["ero"].get(k), "—") if k in r["ero"] else "err" for k in (1, 2, 3)]
+        if d["scope"] == "US" and all(x in ("—", "General t-storms", "err") for x in s + e):
+            continue  # toàn quốc: chỉ in thành phố có nguy cơ
+        rows += 1
+        w(f"| {r['place']} | {r['state']} | " + " | ".join(s + e) + " |")
+    if not rows:
+        w("| (không thành phố nào trong danh sách nằm trong vùng nguy cơ ≥ Marginal) | | | | | | | |")
+
+    # 4. Nhiệt đới
+    w("\n## 4. Bão nhiệt đới — NHC [OFFICIAL]")
     if d["nhc"] is None:
         w("- LỖI: kiểm tra tay https://www.nhc.noaa.gov/")
     elif not d["nhc"]:
-        w("- Không có bão đang hoạt động (vẫn nên xem Tropical Weather Outlook 7 ngày: https://www.nhc.noaa.gov/gtwo.php)")
+        w("- Không có bão đang hoạt động.")
     for s in d["nhc"] or []:
         kt = s.get("intensity")
         try:
-            wind = f"{kt} kt ≈ {round(int(kt) * 1.151)} mph ≈ {round(int(kt) * 1.852)} km/h"
+            wind = f"{round(int(kt) * 1.151 / 5) * 5} mph ({kt} kt)"
         except (TypeError, ValueError):
             wind = str(kt)
-        w(f"- {s.get('classification', '')} {s.get('name', '')} ({s.get('id', '')}): vị trí {s.get('latitude', '')}, {s.get('longitude', '')}; "
-          f"gió {wind}; áp suất {s.get('pressure', '')} mb; hướng {s.get('movementDir', '')}° {s.get('movementSpeed', '')} mph; "
-          f"cập nhật {fmt_time(s.get('lastUpdate'))}")
+        w(f"- {s.get('classification', '')} {s.get('name', '')} ({s.get('id', '')}): {s.get('latitude', '')} {s.get('longitude', '')}; "
+          f"max winds {wind}; {s.get('pressure', '')} mb; moving {s.get('movementDir', '')}° at {s.get('movementSpeed', '')} mph; "
+          f"updated {fmt_time(s.get('lastUpdate'))}")
+    for basin, txt in (d.get("nhc_two") or {}).items():
+        w(f"- TWO {basin}: {txt}")
 
-    w("\n## 4. Dự báo chính thức NWS")
+    # 5. WPC/CPC
+    w("\n## 5. Tổng quan toàn quốc — WPC / CPC [OFFICIAL]")
+    for p, lab in (("PMDSPD", "WPC Short Range Discussion (1–3 ngày)"), ("PMDEPD", "WPC Extended Discussion (3–7 ngày)")):
+        x = (d.get("wpc") or {}).get(p)
+        if x:
+            w(f"### {lab} — issued {fmt_time(x['issued'])}\n```\n{x['text']}\n```")
+    for k, lab in (("610", "CPC 6–10 ngày"), ("814", "CPC 8–14 ngày")):
+        x = (d.get("cpc") or {}).get(k)
+        if x:
+            w(f"- **{lab}:** {x}")
+
+    # 6. Dự báo 7 ngày
+    w("\n## 6. Dự báo 7 ngày NWS [OFFICIAL]")
     for name, periods in d["forecasts"].items():
         if not periods:
             continue
         info = d["points"].get(name) or {}
-        w(f"### {name} (WFO {info.get('wfo', '?')}, {info.get('tz', '')})")
+        w(f"### {name} (WFO {info.get('wfo', '?')})")
         for p in periods:
-            t = p.get("temperature")
-            unit = p.get("temperatureUnit", "F")
-            temp = f"{t}°F/{f2c(t)}°C" if isinstance(t, (int, float)) and unit == "F" else f"{t}°{unit}"
-            pop = ((p.get("probabilityOfPrecipitation") or {}).get("value"))
-            w(f"- {p.get('name')}: {temp}, {p.get('shortForecast')}"
-              + (f", mưa {pop}%" if pop else "") + f", gió {mph_text(p.get('windDirection', '') + ' ' + p.get('windSpeed', ''))}")
+            pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
+            w(f"- {p.get('name')}: {p.get('temperature')}°{p.get('temperatureUnit', 'F')}, {p.get('shortForecast')}"
+              + (f", {pop}% precip" if pop else "") + f", wind {p.get('windDirection', '')} {p.get('windSpeed', '')}")
         w("")
-
     if d["afd"]:
-        w("## 5. Area Forecast Discussion (trích)")
+        w("### Area Forecast Discussion (trích)")
         for a in d["afd"]:
-            w(f"### AFD {a['wfo']} — phát hành {fmt_time(a['issued'])}")
-            w("```\n" + a["text"] + "\n```")
+            w(f"**AFD {a['wfo']}** — issued {fmt_time(a['issued'])}\n```\n{a['text']}\n```")
+
+    # 7. Mô hình
+    w("\n## 7. Tín hiệu mô hình [MODEL GUIDANCE — chỉ tham khảo, không phải dự báo chính thức]")
+    if d.get("models_used") is None:
+        w("- (đã tắt bằng --no-models)")
+    elif not d["signals"]:
+        w(f"- Không mô hình nào ({', '.join(DET_MODELS)}) vượt ngưỡng tại các thành phố trong {d['models_used']['days']} ngày tới.")
+    else:
+        w("Ngưỡng: " + "; ".join(v[3] for v in THRESH.values()) + ". Đồng thuận = số mô hình vượt ngưỡng / số mô hình có dữ liệu. "
+          "Ensemble = % thành viên vượt ngưỡng.")
+        w("| Ngày | Hiện tượng | Độ tin cậy | Thành phố (đồng thuận; khoảng giá trị; ensemble GEFS/ECMWF) |")
+        w("|---|---|---|---|")
+        groups = {}
+        for s in d["signals"]:
+            n = int(s["agree"].split("/")[0])
+            ens = s["ensemble_pct"]
+            top = max(ens.values()) if ens else 0
+            conf = "CAO" if n >= 3 and top >= 50 else "TRUNG BÌNH" if n >= 2 or top >= 30 else "THẤP"
+            ens_txt = "/".join(f"{ens[m]}%" if m in ens else "—" for m in ENS_MODELS)
+            st = CITY_STATE.get(s["place"], "")
+            groups.setdefault((s["date"], s["day_index"], s["label"], conf), []).append(
+                f"{s['place']}{' ' + st if st and not s['place'].endswith(st) else ''} ({s['agree']}; {s['range']}; {ens_txt})")
+        order = {"CAO": 0, "TRUNG BÌNH": 1, "THẤP": 2}
+        for (date, di, label, conf), cities in sorted(groups.items(), key=lambda kv: (kv[0][0], order[kv[0][3]], kv[0][2])):
+            w(f"| {date} (D{di}) | {label} | {conf} | {', '.join(cities)} |")
 
     if d["errors"]:
-        w("\n## Nguồn bị lỗi (PHẢI kiểm tra tay bằng WebFetch/WebSearch)")
+        w("\n## Nguồn bị lỗi — PHẢI kiểm tra tay bằng web")
         for e in d["errors"]:
             w(f"- {e}")
-    w("\n_Cần bổ sung: SPC Day 4–8, WPC Hazards 3–7, CPC 6–10/8–14, mô hình, và tin nhà đài — xem SKILL.md._")
+    w("\n_Còn phải kiểm tra tay: SPC Day 4–8, WPC Hazards Outlook 3–7, sông lũ (water.noaa.gov), tin nhà đài — xem SKILL.md._")
     return "\n".join(L)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--area", help="Mã bang, cách nhau bằng dấu phẩy (TX,OK) hoặc US")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--area", help="US (mặc định) hoặc mã bang, cách nhau bằng dấu phẩy: TX,OK")
     g.add_argument("--point", help="lat,lon")
     g.add_argument("--city", help='Tên thành phố, ví dụ "Denver, CO"')
     ap.add_argument("--name", help="Tên hiển thị cho --point")
-    ap.add_argument("--days", type=int, default=7)
-    ap.add_argument("--cities", type=int, default=3, help="Số thành phố mỗi bang (mặc định 3)")
-    ap.add_argument("--afd", type=int, default=2, help="Số bản AFD trích (mặc định 2)")
-    ap.add_argument("--max-alerts", type=int, default=25)
+    ap.add_argument("--days", type=int, default=7, help="Số ngày dự báo NWS (tối đa 7)")
+    ap.add_argument("--model-days", type=int, default=10, help="Số ngày mô hình (mặc định 10, tối đa 16)")
+    ap.add_argument("--cities", type=int, default=3, help="Số thành phố lấy dự báo NWS mỗi bang")
+    ap.add_argument("--afd", type=int, default=2, help="Số bản AFD trích")
+    ap.add_argument("--max-alerts", type=int, default=30)
+    ap.add_argument("--no-models", action="store_true", help="Bỏ phần mô hình")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
     d = collect(args)
-    if args.json:
-        print(json.dumps(d, ensure_ascii=False, indent=1, default=str))
-    else:
-        print(render(d, args.max_alerts))
+    print(json.dumps(d, ensure_ascii=False, indent=1, default=str) if args.json else render(d, args.max_alerts))
     return 0
 
 

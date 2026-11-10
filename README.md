@@ -57,10 +57,11 @@ rồi mở http://localhost:8000
 
 ## Skill bản tin thời tiết cho Claude
 
-Thư mục `.claude/skills/ban-tin-thoi-tiet-my/` là skill để Claude tự tìm và tổng hợp bản tin thời tiết Mỹ bằng tiếng Việt:
-cảnh báo/dự báo từ NOAA–NWS (SPC, WPC, NHC, CPC), xác thực tin bằng nhà đài uy tín từng bang, khi không có cảnh báo thì
-dùng dự báo 7 ngày, radar và mô hình (HRRR, NAM, GFS, ECMWF, ensemble) để báo sớm.
+Thư mục `.claude/skills/ban-tin-thoi-tiet-my/` là skill để Claude tự tìm, xác thực và tổng hợp tin thời tiết toàn nước Mỹ
+thành gói video YouTube tiếng Anh (kịch bản chia đoạn, tiêu đề, mô tả, tag, gợi ý hình ảnh). Cảnh báo/dự báo từ NOAA–NWS
+(SPC, WPC, NHC, CPC), tin thiệt hại đối chiếu nhà đài uy tín từng bang, báo sớm 3–14 ngày bằng số liệu mô hình
+(GFS, ECMWF, ICON, GEM, ensemble) có chấm độ tin cậy.
 
-- Trong Claude Code mở repo này rồi gõ `/ban-tin-thoi-tiet-my Texas` (hoặc chỉ cần hỏi "bản tin thời tiết Florida hôm nay").
-- Script tự lấy dữ liệu: `python3 .claude/skills/ban-tin-thoi-tiet-my/scripts/tong_hop_nws.py --area TX`
-- Dùng trên claude.ai: nén thư mục `ban-tin-thoi-tiet-my` thành file .zip rồi tải lên ở **Settings → Capabilities → Skills**.
+- Trong Claude Code mở repo này rồi gõ `/ban-tin-thoi-tiet-my` (toàn quốc) hoặc `/ban-tin-thoi-tiet-my Texas`.
+- Script tự lấy dữ liệu: `python3 .claude/skills/ban-tin-thoi-tiet-my/scripts/tong_hop_nws.py` (thêm `--area TX` cho một bang).
+- Dùng trên claude.ai: tải `dist/ban-tin-thoi-tiet-my.zip` lên ở **Settings → Customize → Skills → Add**.
