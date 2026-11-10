@@ -16,6 +16,9 @@ App thời tiết cho nước Mỹ, dữ liệu chính thức từ NOAA:
   - Radar động 1–3 giờ qua (NWS NEXRAD qua Iowa Environmental Mesonet, chỉ lục địa Mỹ)
   - Chế độ trình chiếu toàn màn hình cho TV/máy chiếu: mở `map3d.html?present#TX` (thay TX bằng mã bang, hoặc US),
     bấm "Bắt đầu trình chiếu"; Esc để thoát
+- **Danh bạ NOAA · NWS** (`links.html`): liên kết nhanh tới trang con của SPC, WPC, NHC, CPC, OPC, AWC, SWPC, NESDIS, NCEI…,
+  toàn bộ văn phòng dự báo NWS (trang chủ, AFD, HWO, mọi bản tin; lọc theo bang) và 13 trung tâm dự báo sông;
+  tự hiện liên kết riêng cho vị trí đang xem trong app
 - Cài lên điện thoại/máy tính như app (PWA), mở được khi mất mạng
 
 Không cần API key, không cần server riêng.

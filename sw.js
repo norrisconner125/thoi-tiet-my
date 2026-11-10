@@ -1,7 +1,7 @@
 // Service worker: cho phép cài app và mở được khi mất mạng (hiện dữ liệu lần tải gần nhất).
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL = [
-  './', './index.html', './map.html', './map3d.html', './noaa-common.js', './manifest.webmanifest',
+  './', './index.html', './map.html', './map3d.html', './links.html', './noaa-common.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',

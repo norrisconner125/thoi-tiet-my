@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Danh Bạ NOAA NWS</title>
+<meta name="description" content="Liên kết nhanh tới các trang con của NOAA và National Weather Service: trung tâm quốc gia, văn phòng dự báo, trung tâm dự báo sông.">
+<meta name="theme-color" content="#1d5fa8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #eef2f6; --surface: #ffffff; --line: #d5dde6; --fg: #142233; --muted: #5a6b7d;
+  --accent: #1d5fa8; --accent-soft: #dce8f6;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d1520; --surface: #152131; --line: #26364a; --fg: #e3ebf4; --muted: #8fa1b5; --accent: #6aa8eb; --accent-soft: #1c3350; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--f-body); }
+.bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.bar h1 { margin: 0; font: 700 22px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.bar a.back { color: var(--accent); text-decoration: none; font-weight: 500; white-space: nowrap; }
+.bar .grow { flex: 1; }
+input, select {
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  color: var(--fg); font: 500 13px var(--f-body);
+}
+input[type=search] { width: min(280px, 100%); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { max-width: 1180px; margin: 0 auto; padding: 16px 16px 40px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.toc a { font-size: 12px; text-decoration: none; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 3px 10px; }
+.toc a:hover { border-color: var(--accent); }
+h2 { font: 700 20px/1.1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; margin: 26px 0 10px; scroll-margin-top: 70px; }
+h2 small { font: 400 13px var(--f-body); text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.card h3 { margin: 0 0 2px; font: 600 15px var(--f-body); }
+.card h3 a { color: var(--fg); text-decoration: none; }
+.card h3 a:hover { color: var(--accent); }
+.card .sub { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+.card ul { list-style: none; margin: 0; padding: 0; }
+.card li { padding: 3px 0; border-top: 1px solid var(--line); }
+.card li:first-child { border-top: 0; }
+a { color: var(--accent); }
+.card li a { text-decoration: none; display: block; overflow-wrap: anywhere; }
+.card li a:hover { text-decoration: underline; }
+.card li small { color: var(--muted); }
+.here { border-color: var(--accent); background: linear-gradient(var(--accent-soft), var(--surface) 70%); }
+table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; background: var(--accent-soft); border-top: 0; }
+td code { font: 600 13px var(--f-data); }
+td.lk a { margin-right: 10px; white-space: nowrap; }
+.tbl-wrap { overflow-x: auto; }
+.empty { color: var(--muted); padding: 10px 0; }
+.note { color: var(--muted); font-size: 12px; }
+[hidden] { display: none !important; }
+@media (max-width: 640px) {
+  .bar { position: static; }
+  th.st, td.st { display: none; }
+  td.lk a { display: inline-block; margin: 1px 10px 1px 0; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="./">← Thời Tiết Mỹ</a>
+  <a class="back" href="map.html">Bản đồ cảnh báo</a>
+  <a class="back" href="map3d.html">Bản đồ 3D</a>
+  <h1>Danh bạ NOAA · NWS</h1>
+  <span class="grow"></span>
+  <input id="q" type="search" placeholder="Lọc: SPC, bão, Texas, OUN…" aria-label="Lọc liên kết">
+  <select id="st" aria-label="Lọc văn phòng theo bang"><option value="">Mọi bang</option></select>
+</header>
+
+<main>
+  <nav class="toc" id="toc"></nav>
+  <section id="hereSec" hidden>
+    <h2 id="here">Nơi bạn đang xem</h2>
+    <div class="grid" id="hereGrid"></div>
+  </section>
+  <div id="sections"></div>
+
+  <h2 id="wfo">Văn phòng dự báo NWS (WFO) <small id="wfoCount"></small></h2>
+  <p class="note">Mỗi văn phòng: trang chủ, bản thảo luận dự báo (AFD), triển vọng thời tiết nguy hiểm (HWO), và danh sách mọi bản tin văn phòng đó phát hành.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Mã</th><th>Văn phòng</th><th class="st">Bang</th><th>Liên kết</th></tr></thead>
+    <tbody id="wfoBody"></tbody>
+  </table></div>
+  <p class="empty" id="wfoEmpty" hidden>Không có văn phòng nào khớp.</p>
+
+  <h2 id="rfc">Trung tâm dự báo sông (RFC) <small>13 trung tâm</small></h2>
+  <div class="grid" id="rfcGrid"></div>
+
+  <p class="empty" id="noHit" hidden>Không có liên kết nào khớp với từ khoá.</p>
+  <p class="note" style="margin-top:24px">Tất cả liên kết mở trang chính thức của NOAA/NWS trong thẻ mới. Địa chỉ trang của NOAA thỉnh thoảng thay đổi; nếu một liên kết hỏng, hãy vào trang chủ của trung tâm đó.</p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const read = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+const fold = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase();
+
+// ---------- Trung tâm quốc gia: [tên, mô tả, trang chủ, [[tên trang con, url], ...]] ----------
+const SPC = 'https://www.spc.noaa.gov', WPC = 'https://www.wpc.ncep.noaa.gov', NHC = 'https://www.nhc.noaa.gov', CPC = 'https://www.cpc.ncep.noaa.gov';
+const SECTIONS = [
+  ['nws', 'National Weather Service', [
+    ['NWS — trang chính', 'weather.gov', 'https://www.weather.gov/', [
+      ['Cảnh báo toàn quốc', 'https://www.weather.gov/alerts'],
+      ['Bản đồ dự báo đồ hoạ', 'https://www.weather.gov/forecastmaps'],
+      ['Dự báo số NDFD (bản đồ)', 'https://digital.weather.gov/'],
+      ['Radar NWS', 'https://radar.weather.gov/'],
+      ['Tìm bản tin theo loại (product)', 'https://forecast.weather.gov/product_types.php?site=NWS'],
+      ['NOAA Weather Radio', 'https://www.weather.gov/nwr/'],
+      ['An toàn thời tiết', 'https://www.weather.gov/safety/'],
+      ['SKYWARN (người báo bão)', 'https://www.weather.gov/skywarn/'],
+      ['API dữ liệu NWS', 'https://www.weather.gov/documentation/services-web-api']]],
+    ['Storm Prediction Center (SPC)', 'Dông mạnh, lốc xoáy, cháy rừng', SPC + '/', [
+      ['Triển vọng ngày 1', SPC + '/products/outlook/day1otlk.html'],
+      ['Triển vọng ngày 2', SPC + '/products/outlook/day2otlk.html'],
+      ['Triển vọng ngày 3', SPC + '/products/outlook/day3otlk.html'],
+      ['Triển vọng ngày 4–8', SPC + '/products/exper/day4-8/'],
+      ['Theo dõi (Watch) hiện hành', SPC + '/products/watch/'],
+      ['Thảo luận quy mô vừa (MD)', SPC + '/products/md/'],
+      ['Báo cáo bão hôm nay', SPC + '/climo/reports/today.html'],
+      ['Báo cáo bão hôm qua', SPC + '/climo/reports/yesterday.html'],
+      ['Triển vọng thời tiết cháy rừng', SPC + '/products/fire_wx/'],
+      ['Phân tích quy mô vừa (Mesoanalysis)', SPC + '/exper/mesoanalysis/']]],
+    ['Weather Prediction Center (WPC)', 'Mưa, tuyết, bản đồ khí áp', WPC + '/', [
+      ['Bản đồ dự báo toàn quốc', WPC + '/national_forecast/natfcst.php'],
+      ['Bản đồ phân tích bề mặt', WPC + '/html/sfc2.shtml'],
+      ['Dự báo lượng mưa (QPF)', WPC + '/qpf/qpf2.shtml'],
+      ['Triển vọng mưa quá mức (ERO)', WPC + '/qpf/excessive_rainfall_outlook_ercr.php'],
+      ['Thời tiết mùa đông', WPC + '/wwd/winter_wx.shtml'],
+      ['Nguy hiểm 3–7 ngày', WPC + '/threats/threats.php'],
+      ['HeatRisk (nguy cơ nắng nóng)', WPC + '/heatrisk/'],
+      ['Thông điệp chính (Key Messages)', WPC + '/key_messages/'],
+      ['Thảo luận tầm ngắn', WPC + '/discussions/hpcdiscussions.php?disc=pmdspd'],
+      ['Thảo luận tầm trung', WPC + '/discussions/hpcdiscussions.php?disc=pmdepd']]],
+    ['National Hurricane Center (NHC)', 'Bão nhiệt đới Đại Tây Dương, Đông & Trung Thái Bình Dương', NHC + '/', [
+      ['Triển vọng nhiệt đới — Đại Tây Dương', NHC + '/gtwo.php?basin=atlc&fdays=7'],
+      ['Triển vọng nhiệt đới — Đông Thái Bình Dương', NHC + '/gtwo.php?basin=epac&fdays=7'],
+      ['Triển vọng nhiệt đới — Trung Thái Bình Dương (CPHC)', NHC + '/gtwo.php?basin=cpac&fdays=7'],
+      ['Bão đang hoạt động', NHC + '/cyclones/'],
+      ['Nước dâng do bão', NHC + '/surge/'],
+      ['Máy bay trinh sát bão', NHC + '/recon.php'],
+      ['Dữ liệu GIS', NHC + '/gis/'],
+      ['Dự báo biển', NHC + '/marine/'],
+      ['Báo cáo bão các năm', NHC + '/data/tcr/']]],
+    ['Climate Prediction Center (CPC)', 'Triển vọng 6 ngày đến 1 năm', CPC + '/', [
+      ['Triển vọng 6–10 ngày', CPC + '/products/predictions/610day/'],
+      ['Triển vọng 8–14 ngày', CPC + '/products/predictions/814day/'],
+      ['Triển vọng tuần 3–4', CPC + '/products/predictions/WK34/'],
+      ['Triển vọng tháng', CPC + '/products/predictions/30day/'],
+      ['Triển vọng mùa', CPC + '/products/predictions/90day/'],
+      ['Nguy hiểm 3–14 ngày', CPC + '/products/predictions/threats/threats.php'],
+      ['ENSO (El Niño / La Niña)', CPC + '/products/analysis_monitoring/enso_advisory/ensodisc.shtml'],
+      ['Triển vọng hạn hán tháng', CPC + '/products/expert_assessment/mdo_summary.php'],
+      ['Triển vọng hạn hán mùa', CPC + '/products/expert_assessment/sdo_summary.php'],
+      ['MJO', CPC + '/products/precip/CWlink/MJO/mjo.shtml']]],
+    ['Ocean Prediction Center (OPC)', 'Biển khơi Đại Tây Dương & Thái Bình Dương', 'https://ocean.weather.gov/', [
+      ['Sản phẩm Đại Tây Dương', 'https://ocean.weather.gov/Atl_tab.php'],
+      ['Sản phẩm Thái Bình Dương', 'https://ocean.weather.gov/Pac_tab.php']]],
+    ['Aviation Weather Center (AWC)', 'Thời tiết hàng không', 'https://aviationweather.gov/', [
+      ['Dự báo đồ hoạ hàng không (GFA)', 'https://aviationweather.gov/gfa/'],
+      ['Quan trắc METAR', 'https://aviationweather.gov/data/metar/'],
+      ['Dự báo sân bay TAF', 'https://aviationweather.gov/data/taf/']]],
+    ['Space Weather Prediction Center (SWPC)', 'Thời tiết không gian, cực quang', 'https://www.swpc.noaa.gov/', [
+      ['Dự báo cực quang 30 phút', 'https://www.swpc.noaa.gov/products/aurora-30-minute-forecast'],
+      ['Dự báo 3 ngày', 'https://www.swpc.noaa.gov/products/3-day-forecast'],
+      ['Thang đo NOAA (G, S, R)', 'https://www.swpc.noaa.gov/noaa-scales-explanation']]],
+    ['Nước, sông, tuyết', 'NWPS, NOHRSC', 'https://water.noaa.gov/', [
+      ['National Water Prediction Service (mực nước sông)', 'https://water.noaa.gov/'],
+      ['Phân tích tuyết toàn quốc (NOHRSC)', 'https://www.nohrsc.noaa.gov/nsa/'],
+      ['NOHRSC — trang chủ', 'https://www.nohrsc.noaa.gov/']]],
+    ['Mô hình dự báo', 'NCEP / EMC', 'https://mag.ncep.noaa.gov/', [
+      ['Model Analyses & Guidance (GFS, NAM, HRRR…)', 'https://mag.ncep.noaa.gov/'],
+      ['Environmental Modeling Center', 'https://www.emc.ncep.noaa.gov/'],
+      ['NOMADS (tải dữ liệu mô hình)', 'https://nomads.ncep.noaa.gov/'],
+      ['NCEP — trang chủ', 'https://www.ncep.noaa.gov/']]],
+    ['Biển & sóng thần', 'NDBC, Tsunami', 'https://www.ndbc.noaa.gov/', [
+      ['Phao đo biển (NDBC)', 'https://www.ndbc.noaa.gov/'],
+      ['Cảnh báo sóng thần', 'https://www.tsunami.gov/']]]
+  ]],
+  ['noaa', 'Các đơn vị khác của NOAA', [
+    ['NOAA — trang chính', 'noaa.gov', 'https://www.noaa.gov/', [
+      ['Tin tức NOAA', 'https://www.noaa.gov/news'],
+      ['Climate.gov', 'https://www.climate.gov/']]],
+    ['Vệ tinh (NESDIS)', 'GOES, JPSS', 'https://www.nesdis.noaa.gov/', [
+      ['Ảnh vệ tinh GOES (STAR)', 'https://www.star.nesdis.noaa.gov/goes/'],
+      ['GOES-East toàn đĩa & CONUS', 'https://www.star.nesdis.noaa.gov/goes/conus.php?sat=G19'],
+      ['GOES-West', 'https://www.star.nesdis.noaa.gov/goes/conus.php?sat=G18'],
+      ['Phát hiện khói & cháy (HMS)', 'https://www.ospo.noaa.gov/products/land/hms.html']]],
+    ['Khí hậu & lưu trữ (NCEI)', 'Số liệu lịch sử, kỷ lục', 'https://www.ncei.noaa.gov/', [
+      ['Climate at a Glance', 'https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/'],
+      ['Báo cáo khí hậu hàng tháng', 'https://www.ncei.noaa.gov/access/monitoring/monthly-report/'],
+      ['Thảm hoạ thiệt hại tỷ đô', 'https://www.ncei.noaa.gov/access/billions/'],
+      ['Cơ sở dữ liệu sự kiện bão (Storm Events)', 'https://www.ncdc.noaa.gov/stormevents/'],
+      ['Hạn hán (Drought.gov)', 'https://www.drought.gov/']]],
+    ['Nghiên cứu (OAR)', 'NSSL, AOML, GLERL', 'https://research.noaa.gov/', [
+      ['National Severe Storms Laboratory', 'https://www.nssl.noaa.gov/'],
+      ['Nghiên cứu bão (AOML HRD)', 'https://www.aoml.noaa.gov/hrd/'],
+      ['Ngũ Đại Hồ (GLERL)', 'https://www.glerl.noaa.gov/']]],
+    ['Đại dương & bờ biển (NOS)', 'Thuỷ triều, mực nước', 'https://oceanservice.noaa.gov/', [
+      ['Thuỷ triều & dòng chảy', 'https://tidesandcurrents.noaa.gov/'],
+      ['Hải đồ', 'https://nauticalcharts.noaa.gov/']]],
+    ['Khảo sát thiệt hại', 'Đánh giá sau bão của NWS', 'https://apps.dat.noaa.gov/stormdamage/damageviewer/', [
+      ['Damage Assessment Toolkit (đường đi lốc xoáy)', 'https://apps.dat.noaa.gov/stormdamage/damageviewer/']]]
+  ]]
+];
+
+// ---------- Văn phòng dự báo: [mã, tên, bang chính, vùng] ----------
+const WFOS = [
+  ['CAR','Caribou','ME','ER'],['GYX','Gray / Portland','ME','ER'],['BTV','Burlington','VT','ER'],['BOX','Boston / Norton','MA','ER'],
+  ['ALY','Albany','NY','ER'],['BGM','Binghamton','NY','ER'],['BUF','Buffalo','NY','ER'],['OKX','New York / Upton','NY','ER'],
+  ['PHI','Philadelphia / Mount Holly','NJ','ER'],['CTP','State College','PA','ER'],['PBZ','Pittsburgh','PA','ER'],
+  ['LWX','Baltimore / Washington','VA','ER'],['AKQ','Wakefield','VA','ER'],['RNK','Blacksburg','VA','ER'],['RLX','Charleston','WV','ER'],
+  ['MHX','Newport / Morehead City','NC','ER'],['RAH','Raleigh','NC','ER'],['ILM','Wilmington','NC','ER'],
+  ['GSP','Greenville-Spartanburg','SC','ER'],['CHS','Charleston','SC','ER'],['CAE','Columbia','SC','ER'],
+  ['CLE','Cleveland','OH','ER'],['ILN','Wilmington','OH','ER'],
+  ['BMX','Birmingham','AL','SR'],['HUN','Huntsville','AL','SR'],['MOB','Mobile','AL','SR'],['LZK','Little Rock','AR','SR'],
+  ['JAX','Jacksonville','FL','SR'],['KEY','Key West','FL','SR'],['MFL','Miami','FL','SR'],['MLB','Melbourne','FL','SR'],
+  ['TAE','Tallahassee','FL','SR'],['TBW','Tampa Bay','FL','SR'],['FFC','Atlanta / Peachtree City','GA','SR'],
+  ['LCH','Lake Charles','LA','SR'],['LIX','New Orleans / Baton Rouge','LA','SR'],['SHV','Shreveport','LA','SR'],
+  ['JAN','Jackson','MS','SR'],['ABQ','Albuquerque','NM','SR'],['OUN','Norman','OK','SR'],['TSA','Tulsa','OK','SR'],
+  ['MEG','Memphis','TN','SR'],['MRX','Morristown','TN','SR'],['OHX','Nashville','TN','SR'],
+  ['AMA','Amarillo','TX','SR'],['BRO','Brownsville','TX','SR'],['CRP','Corpus Christi','TX','SR'],['EWX','Austin / San Antonio','TX','SR'],
+  ['EPZ','El Paso','TX','SR'],['FWD','Dallas / Fort Worth','TX','SR'],['HGX','Houston / Galveston','TX','SR'],['LUB','Lubbock','TX','SR'],
+  ['MAF','Midland / Odessa','TX','SR'],['SJT','San Angelo','TX','SR'],['SJU','San Juan','PR','SR'],
+  ['BOU','Denver / Boulder','CO','CR'],['GJT','Grand Junction','CO','CR'],['PUB','Pueblo','CO','CR'],
+  ['DMX','Des Moines','IA','CR'],['DVN','Quad Cities','IA','CR'],['ILX','Lincoln','IL','CR'],['LOT','Chicago','IL','CR'],
+  ['IND','Indianapolis','IN','CR'],['IWX','Northern Indiana','IN','CR'],
+  ['DDC','Dodge City','KS','CR'],['GLD','Goodland','KS','CR'],['ICT','Wichita','KS','CR'],['TOP','Topeka','KS','CR'],
+  ['JKL','Jackson','KY','CR'],['LMK','Louisville','KY','CR'],['PAH','Paducah','KY','CR'],
+  ['APX','Gaylord','MI','CR'],['DTX','Detroit','MI','CR'],['GRR','Grand Rapids','MI','CR'],['MQT','Marquette','MI','CR'],
+  ['DLH','Duluth','MN','CR'],['MPX','Twin Cities','MN','CR'],
+  ['EAX','Kansas City / Pleasant Hill','MO','CR'],['LSX','St. Louis','MO','CR'],['SGF','Springfield','MO','CR'],
+  ['BIS','Bismarck','ND','CR'],['FGF','Grand Forks','ND','CR'],
+  ['GID','Hastings','NE','CR'],['LBF','North Platte','NE','CR'],['OAX','Omaha / Valley','NE','CR'],
+  ['ABR','Aberdeen','SD','CR'],['FSD','Sioux Falls','SD','CR'],['UNR','Rapid City','SD','CR'],
+  ['ARX','La Crosse','WI','CR'],['GRB','Green Bay','WI','CR'],['MKX','Milwaukee / Sullivan','WI','CR'],
+  ['CYS','Cheyenne','WY','CR'],['RIW','Riverton','WY','CR'],
+  ['FGZ','Flagstaff','AZ','WR'],['PSR','Phoenix','AZ','WR'],['TWC','Tucson','AZ','WR'],
+  ['EKA','Eureka','CA','WR'],['HNX','San Joaquin Valley / Hanford','CA','WR'],['LOX','Los Angeles / Oxnard','CA','WR'],
+  ['MTR','San Francisco Bay Area','CA','WR'],['SGX','San Diego','CA','WR'],['STO','Sacramento','CA','WR'],
+  ['BOI','Boise','ID','WR'],['PIH','Pocatello / Idaho Falls','ID','WR'],
+  ['BYZ','Billings','MT','WR'],['GGW','Glasgow','MT','WR'],['MSO','Missoula','MT','WR'],['TFX','Great Falls','MT','WR'],
+  ['LKN','Elko','NV','WR'],['REV','Reno','NV','WR'],['VEF','Las Vegas','NV','WR'],
+  ['MFR','Medford','OR','WR'],['PDT','Pendleton','OR','WR'],['PQR','Portland','OR','WR'],
+  ['SLC','Salt Lake City','UT','WR'],['OTX','Spokane','WA','WR'],['SEW','Seattle','WA','WR'],
+  ['AFC','Anchorage','AK','AR'],['AFG','Fairbanks','AK','AR'],['AJK','Juneau','AK','AR'],
+  ['HFO','Honolulu','HI','PR'],['GUM','Guam','GU','PR'],['PPG','Pago Pago','AS','PR']
+];
+const REGION = { ER: 'Miền Đông', SR: 'Miền Nam', CR: 'Miền Trung', WR: 'Miền Tây', AR: 'Alaska', PR: 'Thái Bình Dương' };
+const STATE_NAMES = { AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'Washington D.C.',
+  FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',
+  MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',
+  NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',
+  PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',
+  WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',PR:'Puerto Rico',GU:'Guam',AS:'American Samoa' };
+// Bang không có văn phòng riêng → văn phòng phụ trách
+const ALSO = { CT: ['OKX','BOX','ALY'], RI: ['BOX'], NH: ['GYX','BOX'], DE: ['PHI'], MD: ['LWX','PHI','AKQ'], DC: ['LWX'],
+  NJ: ['OKX'], PA: ['PHI','BGM','CLE','RLX'], OH: ['PBZ','RLX','IWX','DTX'], WV: ['PBZ','LWX','RNK','JKL'], VA: ['MRX','RLX','JKL'],
+  KY: ['ILN','RLX','MRX','OHX'], IN: ['LMK','PAH','ILN','ILX','LOT'], IL: ['DVN','LSX','PAH'], TN: ['HUN','JKL'], GA: ['TAE','JAX','CHS','GSP','MRX','BMX'],
+  NC: ['GSP','MRX','RNK','AKQ'], AR: ['MEG','JAN','SHV','TSA','SGF'], MS: ['MEG','MOB','LIX','BMX'], AL: ['TAE','FFC'], NM: ['EPZ','AMA','LUB','MAF'],
+  OK: ['AMA','LUB','FWD','SHV','ICT'], KS: ['EAX','OAX','PUB','SGF'], NE: ['GLD','CYS','UNR','FSD','TOP','BOU'], SD: ['BIS','FGF','MPX','OAX'],
+  ND: ['ABR','GGW'], MN: ['FGF','FSD','ARX','ABR'], IA: ['ARX','OAX','FSD','EAX','MPX'], WI: ['MPX','DLH','MQT'], MI: ['IWX','GRB'],
+  CO: ['BOU','GLD','CYS'], WY: ['BYZ','UNR','PIH','SLC','GJT','BOU'], MT: ['UNR','OTX'], ID: ['MSO','OTX','PDT','SLC'], UT: ['GJT','LKN','VEF','FGZ','PIH'],
+  NV: ['STO','HNX','PSR','SLC','BOI'], AZ: ['VEF','PSR','SGX','EPZ'], CA: ['MFR','VEF','PSR','REV'], OR: ['BOI','EKA'], WA: ['PQR','PDT'], TX: ['LCH','SHV','OUN','TSA'] };
+
+const office = c => `https://www.weather.gov/${c.toLowerCase()}/`;
+const product = (c, p) => `https://forecast.weather.gov/product.php?site=NWS&issuedby=${c}&product=${p}&format=CI&version=1&glossary=1`;
+const products = c => `https://forecast.weather.gov/product_types.php?site=${c}`;
+
+// ---------- Trung tâm dự báo sông ----------
+const RFCS = [
+  ['ABRFC','Arkansas-Red Basin','Tulsa, OK','https://www.weather.gov/abrfc/'],
+  ['APRFC','Alaska-Pacific','Anchorage, AK','https://www.weather.gov/aprfc/'],
+  ['CBRFC','Colorado Basin','Salt Lake City, UT','https://www.cbrfc.noaa.gov/'],
+  ['CNRFC','California-Nevada','Sacramento, CA','https://www.cnrfc.noaa.gov/'],
+  ['LMRFC','Lower Mississippi','Slidell, LA','https://www.weather.gov/lmrfc/'],
+  ['MARFC','Middle Atlantic','State College, PA','https://www.weather.gov/marfc/'],
+  ['MBRFC','Missouri Basin','Pleasant Hill, MO','https://www.weather.gov/mbrfc/'],
+  ['NCRFC','North Central','Chanhassen, MN','https://www.weather.gov/ncrfc/'],
+  ['NERFC','Northeast','Norton, MA','https://www.weather.gov/nerfc/'],
+  ['NWRFC','Northwest','Portland, OR','https://www.nwrfc.noaa.gov/'],
+  ['OHRFC','Ohio','Wilmington, OH','https://www.weather.gov/ohrfc/'],
+  ['SERFC','Southeast','Peachtree City, GA','https://www.weather.gov/serfc/'],
+  ['WGRFC','West Gulf','Fort Worth, TX','https://www.weather.gov/wgrfc/']
+];
+
+// ---------- Vẽ ----------
+const ext = 'target="_blank" rel="noopener"';
+const cardHTML = (title, sub, home, links, cls = '') => `<article class="card ${cls}" data-text="${esc(fold([title, sub, ...links.map(l => l[0])].join(' ')))}">
+  <h3><a href="${esc(home)}" ${ext}>${esc(title)} ↗</a></h3><p class="sub">${esc(sub)}</p>
+  <ul>${links.map(([t, u]) => `<li><a href="${esc(u)}" ${ext}>${esc(t)}</a></li>`).join('')}</ul></article>`;
+
+$('sections').innerHTML = SECTIONS.map(([id, name, cards]) =>
+  `<section data-sec><h2 id="${id}">${esc(name)}</h2><div class="grid">${cards.map(c => cardHTML(...c)).join('')}</div></section>`).join('');
+
+$('rfcGrid').innerHTML = RFCS.map(([c, n, loc, u]) => cardHTML(`${c} — ${n}`, loc, u, [['Trang chủ ' + c, u]])).join('');
+
+const toc = [['here', 'Nơi bạn đang xem'], ...SECTIONS.map(([id, n]) => [id, n]), ['wfo', 'Văn phòng dự báo'], ['rfc', 'Trung tâm dự báo sông']];
+function drawToc(showHere) {
+  $('toc').innerHTML = toc.filter(t => showHere || t[0] !== 'here').map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('');
+}
+
+const states = [...new Set(WFOS.map(w => w[2]).concat(Object.keys(ALSO)))].sort((a, b) => STATE_NAMES[a].localeCompare(STATE_NAMES[b]));
+$('st').insertAdjacentHTML('beforeend', states.map(s => `<option value="${s}">${esc(STATE_NAMES[s])}</option>`).join(''));
+
+function wfoRow([c, n, s, r]) {
+  return `<tr data-text="${esc(fold([c, n, s, STATE_NAMES[s], REGION[r]].join(' ')))}" data-code="${c}" data-st="${s}">
+    <td><code>${c}</code></td><td>${esc(n)}<br><small class="note">${esc(REGION[r])}</small></td><td class="st">${esc(STATE_NAMES[s])}</td>
+    <td class="lk"><a href="${office(c)}" ${ext}>Trang chủ</a><a href="${product(c, 'AFD')}" ${ext}>AFD</a><a href="${product(c, 'HWO')}" ${ext}>HWO</a><a href="${products(c)}" ${ext}>Mọi bản tin</a></td></tr>`;
+}
+$('wfoBody').innerHTML = WFOS.map(wfoRow).join('');
+
+// ---------- Theo vị trí đang xem trong app ----------
+function drawHere() {
+  const last = read('last'), off = read('lastOffice'), st = read('lastState');
+  const cards = [];
+  if (last && isFinite(last.lat)) {
+    const ll = `lat=${(+last.lat).toFixed(4)}&lon=${(+last.lon).toFixed(4)}`;
+    cards.push(cardHTML(last.label || 'Vị trí đã chọn', 'Trang theo toạ độ trên weather.gov', `https://forecast.weather.gov/MapClick.php?${ll}`, [
+      ['Dự báo điểm 7 ngày', `https://forecast.weather.gov/MapClick.php?${ll}`],
+      ['Biểu đồ dự báo theo giờ', `https://forecast.weather.gov/MapClick.php?${ll}&unit=0&lg=english&FcstType=graphical`],
+      ['Dự báo dạng chữ', `https://forecast.weather.gov/MapClick.php?${ll}&unit=0&lg=english&FcstType=text&TextType=1`]
+    ], 'here'));
+  }
+  const w = off && WFOS.find(x => x[0] === off);
+  if (w) cards.push(cardHTML(`Văn phòng ${w[0]} — ${w[1]}`, 'Văn phòng dự báo phụ trách vị trí này', office(w[0]), [
+    ['Trang chủ văn phòng', office(w[0])], ['Thảo luận dự báo (AFD)', product(w[0], 'AFD')],
+    ['Triển vọng nguy hiểm (HWO)', product(w[0], 'HWO')], ['Mọi bản tin của văn phòng', products(w[0])]
+  ], 'here'));
+  if (st && STATE_NAMES[st]) {
+    cards.push(cardHTML(`Bang ${STATE_NAMES[st]}`, 'Cảnh báo theo bang', `https://alerts.weather.gov/search?area=${st}`, [
+      ['Cảnh báo hiện hành của bang', `https://alerts.weather.gov/search?area=${st}`],
+      ['Bản đồ cảnh báo trong app', `map.html#${st}`]
+    ], 'here'));
+  }
+  $('hereGrid').innerHTML = cards.join('');
+  $('hereSec').hidden = !cards.length;
+  drawToc(cards.length > 0);
+}
+
+// ---------- Lọc ----------
+function filter() {
+  const q = fold($('q').value.trim()), st = $('st').value;
+  const words = q.split(/\s+/).filter(Boolean);
+  const hit = el => words.every(w => el.dataset.text.includes(w));
+  let any = false;
+  document.querySelectorAll('#sections .card, #rfcGrid .card').forEach(c => { c.hidden = !hit(c); any ||= !c.hidden; });
+  document.querySelectorAll('[data-sec]').forEach(s => { s.hidden = !s.querySelector('.card:not([hidden])'); });
+  const ok = st ? new Set([...WFOS.filter(w => w[2] === st).map(w => w[0]), ...(ALSO[st] || [])]) : null;
+  let n = 0;
+  document.querySelectorAll('#wfoBody tr').forEach(r => { r.hidden = !(hit(r) && (!ok || ok.has(r.dataset.code))); if (!r.hidden) n++; });
+  $('wfoCount').textContent = st ? `${n} văn phòng phụ trách ${STATE_NAMES[st]}` : `${n} / ${WFOS.length} văn phòng`;
+  $('wfoEmpty').hidden = n > 0;
+  $('noHit').hidden = any || n > 0;
+}
+$('q').addEventListener('input', filter);
+$('st').addEventListener('change', filter);
+drawHere();
+filter();
+</script>
+</body>
+</html>
