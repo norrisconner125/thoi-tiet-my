@@ -51,11 +51,12 @@ button.play[aria-pressed="true"] { background: var(--live); border-color: var(--
 .more { display: contents; }
 
 /* Nhãn đài */
-.bug { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: 74px; display: flex; align-items: stretch; font: 700 13px/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 2px 10px rgb(0 0 0 / .4); }
+.bug { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: calc(var(--bar-h, 64px) + 10px); display: flex; align-items: stretch; font: 700 13px/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 2px 10px rgb(0 0 0 / .4); }
 .bug span { padding: 6px 9px; }
 .bug .a { background: var(--live); }
 .bug .b { background: rgb(6 14 24 / .9); font-family: var(--f-data); font-weight: 500; letter-spacing: 0; }
-.status { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: 144px; font-size: 12px; color: var(--muted); text-shadow: 0 1px 3px #000; max-width: 70vw; }
+.tbars { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: calc(var(--bar-h, 64px) + 42px); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 70vw; }
+.status { font-size: 12px; color: var(--muted); text-shadow: 0 1px 3px #000; }
 
 /* Thanh chữ phía dưới (lower third) */
 .l3 {
@@ -94,7 +95,6 @@ button.play[aria-pressed="true"] { background: var(--live); border-color: var(--
   .legend.collapsed > :not(.legend-toggle) { display: none; }
   .legend-toggle { display: block; width: 100%; margin-bottom: 6px; }
   .bug { top: auto; bottom: calc(max(28px, calc(env(safe-area-inset-bottom) + 16px)) + 150px); }
-  .status { top: 112px; }
 }
 
 /* Nhãn số trên cột */
@@ -108,12 +108,13 @@ button.play[aria-pressed="true"] { background: var(--live); border-color: var(--
 .pop td { padding: 1px 8px 1px 0; }
 .nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 /* Thanh thời gian radar động */
-.rbar { position: absolute; z-index: 4; left: max(16px, env(safe-area-inset-left)); top: 106px; display: flex; align-items: center; gap: 8px;
+.rbar, .abar { display: flex; align-items: center; gap: 8px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: 600 13px var(--f-data); }
 .rbar button { padding: 2px 8px; font-size: 12px; }
 .rbar input { width: 140px; accent-color: var(--accent); }
-.rbar .lab { font: 700 12px var(--f-display); letter-spacing: .1em; color: var(--muted); }
-.rbar .now { color: #ffd54f; }
+.rbar[hidden], .abar[hidden] { display: none; }
+.rbar .lab, .abar .lab { font: 700 12px var(--f-display); letter-spacing: .1em; color: var(--muted); }
+.rbar .now, .abar .now { color: #ffd54f; }
 
 /* Nhãn điểm dự báo bão */
 .spt { display: flex; align-items: center; gap: 5px; pointer-events: none; transform: translateY(-2px); }
@@ -131,10 +132,11 @@ button.play[aria-pressed="true"] { background: var(--live); border-color: var(--
 @keyframes crawl { from { transform: translateX(var(--from, 100vw)); } to { transform: translateX(-100%); } }
 
 /* Chế độ trình chiếu: ẩn thanh điều khiển, chữ to, băng chữ chạy */
-body.present .bar, body.present .maplibregl-ctrl-top-right, body.present .status, body.present .legend { display: none; }
+body.present .bar, body.present .maplibregl-ctrl-top-right, body.present .status, body.present .legend, body.present .lp { display: none; }
 body.present .ticker { display: flex; }
 body.present .bug { top: max(20px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); bottom: auto; font-size: 17px; }
-body.present .rbar { top: calc(max(20px, env(safe-area-inset-top)) + 40px); left: max(24px, env(safe-area-inset-left)); }
+body.present .tbars { top: calc(max(20px, env(safe-area-inset-top)) + 40px); left: max(24px, env(safe-area-inset-left)); }
+body.present .abar { font-size: 16px; }
 body.present .rbar button, body.present .rbar input { display: none; }
 body.present .l3 { bottom: 60px; left: max(24px, env(safe-area-inset-left)); width: min(820px, calc(100vw - 48px)); }
 body.present .l3 .title { font-size: clamp(30px, 5vw, 56px); }
@@ -147,6 +149,46 @@ body.present .exitp { display: block; opacity: 1; transition: opacity .4s; }
 body.present.idle .exitp { opacity: 0; pointer-events: none; }
 .startp { position: absolute; inset: 0; z-index: 7; display: grid; place-items: center; background: rgb(6 14 24 / .7); }
 .startp button { font: 800 26px var(--f-display); letter-spacing: .06em; text-transform: uppercase; padding: 18px 30px; background: var(--live); border-color: var(--live); }
+
+/* Bảng chọn lớp dữ liệu */
+.lp { position: absolute; z-index: 6; left: max(16px, env(safe-area-inset-left)); top: calc(var(--bar-h, 64px) + 4px); width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - var(--bar-h, 64px) - 24px);
+  display: flex; flex-direction: column; background: rgb(9 19 32 / .96); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 40px rgb(0 0 0 / .55); }
+.lp[hidden] { display: none; }
+.lp .lph { display: flex; align-items: center; gap: 8px; padding: 10px 12px 6px; }
+.lp .lph h2 { margin: 0; flex: 1; font: 800 18px var(--f-display); letter-spacing: .08em; text-transform: uppercase; }
+.lp .lph button { padding: 3px 9px; }
+.lp input[type=search] { margin: 0 12px 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / .06); color: var(--fg); font: 13px var(--f-body); }
+.lp .pre { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 8px; border-bottom: 1px solid var(--line); }
+.lp .pre::before { content: 'Bộ dựng sẵn'; width: 100%; font: 700 11px var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.lp .pre button { padding: 4px 9px; font-size: 12px; border-radius: 999px; }
+.lp .lst { overflow: auto; padding: 4px 6px 10px; overscroll-behavior: contain; }
+.lp details { border-bottom: 1px solid rgb(255 255 255 / .06); }
+.lp summary { cursor: pointer; padding: 8px 6px; font: 700 15px var(--f-display); letter-spacing: .06em; text-transform: uppercase; }
+.lp summary .cnt { float: right; font: 500 12px var(--f-data); letter-spacing: 0; color: var(--muted); text-transform: none; }
+.lp .lr { padding: 5px 6px 6px 10px; border-radius: 6px; }
+.lp .lr.on { background: rgb(61 139 253 / .14); }
+.lp .lname { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.lp .lname input { margin-top: 3px; accent-color: var(--accent); flex: none; }
+.lp .lname small { display: block; color: var(--muted); font: 11px var(--f-data); }
+.lp .lctl { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 6px 0 2px 22px; }
+.lp .lctl select { max-width: 100%; padding: 4px 6px; font-size: 12px; }
+.lp .lctl button { padding: 4px 9px; font-size: 12px; }
+.lp .op { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.lp .op input { width: 110px; accent-color: var(--accent); }
+.lp .sitelab { width: 100%; font: 11px var(--f-data); color: #ffd54f; }
+.lp .note { color: var(--muted); font-size: 12px; margin: 6px; }
+#lyrBtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); }
+/* Chú giải các lớp đang bật */
+.legend .lgv { font: 11px var(--f-data); color: #ffd54f; margin-bottom: 4px; }
+.legend .lgi { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.legend .lgg.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; font-size: 11px; }
+.legend .lgg.two .lgi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend .lgi img { width: 16px; height: 16px; object-fit: contain; flex: none; }
+.legend .lgstrip { display: flex; height: 12px; border-radius: 3px; overflow: hidden; }
+.legend .lgstrip img { flex: 1; min-width: 0; height: 12px; object-fit: cover; }
+.legend .lgsub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.legend .lgwms { max-width: 100%; background: #fff; border-radius: 4px; padding: 2px; }
+.legend .src { font-size: 11px; }
 @media (prefers-reduced-motion: reduce) { .l3 { transition: none; } .ticker .tt { animation-duration: calc(var(--dur, 60s) * 2); } }
 </style>
 </head>
@@ -183,18 +225,29 @@ body.present.idle .exitp { opacity: 0; pointer-events: none; }
   <label class="chk"><input type="checkbox" id="lyrStorms" checked> Bão NHC</label>
   <label class="chk"><input type="checkbox" id="lyrTerrain" checked> Địa hình</label>
   <label class="chk">Độ cao khối <input type="range" id="scale" min="0.4" max="3" step="0.1" value="1" aria-label="Độ cao khối"></label>
+  <button type="button" id="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">☰ Lớp dữ liệu<span id="lyrCount"></span></button>
   <button type="button" id="orbit" aria-pressed="false">Xoay</button>
   <button type="button" id="tour" class="play" aria-pressed="false">▶ Dẫn chương trình</button>
   <button type="button" id="present">⛶ Trình chiếu</button>
 </header>
 
 <div class="bug" aria-hidden="true"><span class="a">NWS · NOAA</span><span class="b" id="clock"></span></div>
-<div class="status" id="status" role="status"></div>
-<div class="rbar" id="rbar" hidden>
-  <span class="lab">Radar</span><span id="rtime"></span>
-  <button type="button" id="rplay" aria-label="Tạm dừng radar động">⏸</button>
-  <input type="range" id="rslider" min="0" max="0" value="0" aria-label="Chọn thời điểm radar">
+<div class="tbars">
+  <div class="rbar" id="rbar" hidden>
+    <span class="lab">Radar</span><span id="rtime"></span>
+    <button type="button" id="rplay" aria-label="Tạm dừng radar động">⏸</button>
+    <input type="range" id="rslider" min="0" max="0" value="0" aria-label="Chọn thời điểm radar">
+  </div>
+  <div class="abar rbar" id="abar" hidden></div>
+  <div class="status" id="status" role="status"></div>
 </div>
+
+<aside class="lp" id="lyrPanel" hidden aria-label="Lớp dữ liệu thời tiết">
+  <div class="lph"><h2>Lớp dữ liệu</h2><button type="button" id="lyrClose" aria-label="Đóng bảng lớp">✕</button></div>
+  <input type="search" id="lyrSearch" placeholder="Tìm lớp: radar, tuyết, SPC, khói…" aria-label="Tìm lớp dữ liệu">
+  <div class="pre" id="lyrPresets"></div>
+  <div class="lst" id="lyrList"></div>
+</aside>
 <div class="ticker" id="ticker" aria-hidden="true"><div class="tl">Cảnh báo</div><div class="tv"><div class="tt" id="ttrack"></div></div></div>
 <button type="button" class="exitp" id="exitPresent">Thoát trình chiếu (Esc)</button>
 
@@ -210,11 +263,13 @@ body.present.idle .exitp { opacity: 0; pointer-events: none; }
 
 <aside class="legend" id="legend">
   <button type="button" class="legend-toggle" id="legendToggle">Chú giải</button>
+  <div id="legendLayers"></div>
   <div id="legendBody"></div>
 </aside>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="noaa-common.js"></script>
+<script src="layers.js"></script>
 <script>
 // ================= BẢN ĐỒ 3D =================
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
@@ -274,6 +329,8 @@ const map = new maplibregl.Map({
   }
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+// Thanh điều khiển xuống dòng trên màn hình hẹp: đẩy nhãn đài, thanh radar, bảng lớp xuống theo chiều cao thật
+new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', document.querySelector('.bar').offsetHeight + 'px')).observe(document.querySelector('.bar'));
 map.on('load', () => {
   map.setSky?.({ 'sky-color': '#0d2440', 'horizon-color': '#3b6a9a', 'fog-color': '#0b1726', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.2 });
 });
@@ -719,6 +776,7 @@ map.once('load', () => {
   setRegion(STATES[h] ? h : h === 'US' ? 'US' : (STATES[last] ? last : 'US'));
   loadStorms();
   setRadarMode($('radarMode').value);
+  initLayerPanel();
   if (/[?&]present\b/.test(location.search)) offerPresent();
 });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -16,6 +16,24 @@ App thời tiết cho nước Mỹ, dữ liệu chính thức từ NOAA:
   - Radar động 1–3 giờ qua (NWS NEXRAD qua Iowa Environmental Mesonet, chỉ lục địa Mỹ)
   - Chế độ trình chiếu toàn màn hình cho TV/máy chiếu: mở `map3d.html?present#TX` (thay TX bằng mã bang, hoặc US),
     bấm "Bắt đầu trình chiếu"; Esc để thoát
+  - **Bộ lớp dữ liệu đầy đủ kiểu nhà đài** (nút **☰ Lớp dữ liệu**, file `layers.js`): 49 lớp, 178 biến thể, chia 10 nhóm,
+    mỗi lớp có chọn ngày/giờ, độ đậm và chú giải tự động:
+    - Vệ tinh GOES: ảnh mây thật, hồng ngoại, hơi nước, sóng ngắn, tuyết/băng
+    - Radar & sét: phản hồi tổng hợp, loại mưa (mưa/tuyết/băng), đỉnh mây vang, radar vận tốc từng trạm NEXRAD
+      (tự chọn trạm gần tâm bản đồ — thấy vòng xoáy lốc), mật độ sét
+    - Quan trắc: bảng số trạm, gió, mây, báo cáo thiệt hại (LSR) 24–72 giờ, lượng mưa đã rơi 1 giờ – 30 ngày, độ dày tuyết, vùng phủ tuyết
+    - Dự báo: radar dự báo HRRR 1–18 giờ (chạy hình), bản đồ front + H/L + vùng mưa của WPC, nhiệt độ/nhiệt độ cảm nhận/độ ẩm NDFD,
+      cao nhất/thấp nhất, lượng mưa dự báo QPF
+    - Giông lốc, lũ, cháy: SPC ngày 1–8 (5 cấp, xác suất lốc xoáy/mưa đá/gió), thảo luận khẩn SPC, nguy cơ mưa gây lũ quét (ERO),
+      ngưỡng lũ quét, nguy cơ cháy rừng
+    - Mùa đông: WSSI, xác suất tuyết ≥ 4/8/12 in và băng, triển vọng mùa đông ngày 4–7
+    - Bão nhiệt đới: vùng gió bão, cảnh báo bờ biển, dải gió đã quét, ngập do nước dâng, nhiệt độ mặt biển và dị thường
+    - Dài hạn: CPC 6–10 và 8–14 ngày, hiểm họa 3–14 ngày, hạn hán
+    - Thủy văn & môi trường: sông dâng bất thường (National Water Model), lũ sông, khói cháy rừng, PM2.5, ozone, bụi
+    - Hàng không: SIGMET/G-AIRMET, báo cáo phi công, điều kiện bay
+  - 7 **bộ dựng sẵn** theo loại bản tin: giông lốc xoáy, bão tuyết, bão nhiệt đới, mưa lũ, nắng nóng/cháy rừng, tổng quan, dài hạn
+  - Các lớp đang bật được ghi lên đường dẫn (`?lop=spc.0,lsr.0`) để mở lại đúng bộ lớp, kể cả khi trình chiếu:
+    ví dụ `map3d.html?present&lop=spc.0,lsr.0,rad_cref.0#OK`
 - Cài lên điện thoại/máy tính như app (PWA), mở được khi mất mạng
 
 Không cần API key, không cần server riêng.
