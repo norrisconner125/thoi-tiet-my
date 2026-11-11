@@ -1,0 +1,1767 @@
+{
+ "nhom": [
+  [
+   "sat",
+   "Vệ tinh GOES"
+  ],
+  [
+   "radar",
+   "Radar & sét"
+  ],
+  [
+   "obs",
+   "Quan trắc thực tế"
+  ],
+  [
+   "fcst",
+   "Dự báo"
+  ],
+  [
+   "severe",
+   "Giông lốc · lũ · cháy rừng"
+  ],
+  [
+   "winter",
+   "Mùa đông: tuyết, băng"
+  ],
+  [
+   "tropic",
+   "Bão nhiệt đới"
+  ],
+  [
+   "long",
+   "Triển vọng dài hạn (CPC)"
+  ],
+  [
+   "env",
+   "Thủy văn & môi trường"
+  ],
+  [
+   "avn",
+   "Hàng không"
+  ]
+ ],
+ "lop": [
+  {
+   "id": "radar",
+   "g": "radar",
+   "name": "Radar khảm NEXRAD (chạy theo giờ, có lưu trữ)",
+   "en": "NEXRAD Base Reflectivity Mosaic",
+   "chip": "Radar",
+   "kieu": "iem_wmst",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "nexrad-n0q-wmst"
+    }
+   ],
+   "op": 0.8,
+   "src": "NWS NEXRAD via Iowa Environmental Mesonet",
+   "thang": "dbz",
+   "thoi_gian": "luu_tru",
+   "note": "Lớp radar chính. Chạy được bất kỳ khung giờ nào trong quá khứ (lưu trữ từ 1995), bước 5 phút."
+  },
+  {
+   "id": "sat_vis",
+   "g": "sat",
+   "name": "Ảnh mây thật (Visible)",
+   "en": "GOES Visible",
+   "chip": "Satellite",
+   "op": 0.85,
+   "src": "NOAA nowCOAST / GOES",
+   "note": "Chỉ có ban ngày (sáng sớm miền Tây còn tối).",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "satellite:goes_visible_imagery"
+    }
+   ],
+   "duoi": true,
+   "khong_chu_giai": true,
+   "thoi_gian": "gan_day",
+   "toan_cau": "satellite:global_visible_imagery_mosaic"
+  },
+  {
+   "id": "sat_ir",
+   "g": "sat",
+   "name": "Hồng ngoại – đỉnh mây lạnh (IR)",
+   "en": "GOES Longwave IR",
+   "chip": "Infrared Satellite",
+   "op": 0.8,
+   "src": "NOAA nowCOAST / GOES",
+   "note": "Mây càng sáng/lạnh càng cao, giông càng mạnh. Dùng được cả đêm.",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "satellite:goes_longwave_imagery"
+    }
+   ],
+   "duoi": true,
+   "khong_chu_giai": true,
+   "thoi_gian": "gan_day",
+   "toan_cau": "satellite:global_longwave_imagery_mosaic"
+  },
+  {
+   "id": "sat_wv",
+   "g": "sat",
+   "name": "Hơi nước tầng cao (Water Vapor)",
+   "en": "GOES Water Vapor",
+   "chip": "Water Vapor",
+   "op": 0.8,
+   "src": "NOAA nowCOAST / GOES",
+   "note": "Thấy dòng tia, rãnh áp thấp, khí khô.",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "satellite:goes_water_vapor_imagery"
+    }
+   ],
+   "duoi": true,
+   "khong_chu_giai": true,
+   "thoi_gian": "gan_day",
+   "toan_cau": "satellite:global_water_vapor_imagery_mosaic"
+  },
+  {
+   "id": "sat_sw",
+   "g": "sat",
+   "name": "Sóng ngắn – sương mù, điểm cháy (Shortwave)",
+   "en": "GOES Shortwave IR",
+   "chip": "Shortwave IR",
+   "op": 0.8,
+   "src": "NOAA nowCOAST / GOES",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "satellite:goes_shortwave_imagery"
+    }
+   ],
+   "duoi": true,
+   "khong_chu_giai": true,
+   "thoi_gian": "gan_day",
+   "toan_cau": "satellite:global_shortwave_imagery_mosaic"
+  },
+  {
+   "id": "sat_snow",
+   "g": "sat",
+   "name": "Phân biệt tuyết và mây (Snow/Ice)",
+   "en": "GOES Snow/Ice",
+   "chip": "Snow / Ice Satellite",
+   "op": 0.85,
+   "src": "NOAA nowCOAST / GOES",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "satellite:goes_snow_ice_imagery"
+    }
+   ],
+   "duoi": true,
+   "khong_chu_giai": true,
+   "thoi_gian": "gan_day"
+  },
+  {
+   "id": "rad_cref",
+   "g": "radar",
+   "name": "Phản hồi tổng hợp (Composite Reflectivity)",
+   "en": "MRMS Composite Reflectivity",
+   "chip": "Composite Radar",
+   "op": 0.75,
+   "src": "NOAA/NCEP MRMS",
+   "note": "Cường độ mạnh nhất trên cả cột khí – thấy lõi mưa đá.",
+   "kieu": "wms",
+   "url": "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_cref_qcd/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "conus_cref_qcd"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "rad_ptype",
+   "g": "radar",
+   "name": "Loại mưa: mưa / tuyết / băng (Precip Type)",
+   "en": "MRMS Precipitation Type",
+   "chip": "Precip Type",
+   "op": 0.8,
+   "src": "NOAA/NCEP MRMS",
+   "kieu": "wms",
+   "url": "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_pcpn_typ/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "conus_pcpn_typ"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "rad_tops",
+   "g": "radar",
+   "name": "Độ cao đỉnh mây vang (Echo Tops)",
+   "en": "MRMS Echo Tops",
+   "chip": "Echo Tops",
+   "op": 0.75,
+   "src": "NOAA/NCEP MRMS",
+   "note": "Đỉnh càng cao, giông càng mạnh.",
+   "kieu": "wms",
+   "url": "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_neet_v18/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "conus_neet_v18"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "rad_site",
+   "g": "radar",
+   "name": "Radar từng trạm: vận tốc gió (Velocity)",
+   "en": "NEXRAD Level III",
+   "chip": "Doppler Radar",
+   "op": 0.85,
+   "src": "NWS NEXRAD via Iowa Environmental Mesonet",
+   "note": "Xanh: gió hướng về radar, đỏ: gió đi ra xa. Xanh – đỏ sát nhau = vòng xoáy (dấu hiệu lốc xoáy).",
+   "kieu": "xyz",
+   "tpl": "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::{site}-{v}-0/{z}/{x}/{y}.png",
+   "v": [
+    {
+     "vi": "Vận tốc (Velocity)",
+     "en": "Velocity",
+     "val": "N0U"
+    },
+    {
+     "vi": "Vận tốc tương đối với ô bão (SRV)",
+     "en": "Storm-Relative Velocity",
+     "val": "N0S"
+    },
+    {
+     "vi": "Phản hồi độ phân giải cao (N0B)",
+     "en": "Reflectivity",
+     "val": "N0B"
+    }
+   ],
+   "thang": "van_toc",
+   "tram": true,
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "lightning",
+   "g": "radar",
+   "name": "Mật độ sét (Lightning)",
+   "en": "Lightning Strike Density",
+   "chip": "Lightning",
+   "op": 0.9,
+   "src": "NOAA nowCOAST",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "lightning_detection:ldn_lightning_strike_density"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "obs_sfc",
+   "g": "obs",
+   "name": "Bảng số trạm: nhiệt độ, điểm sương, áp suất",
+   "en": "Surface Station Plots",
+   "chip": "Surface Obs",
+   "op": 1,
+   "src": "NWS / NOAA",
+   "note": "Đỏ: nhiệt độ (°F) · xanh lá: điểm sương (°F) · xanh dương: áp suất (mb). Phóng to để thấy thêm trạm.",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/obs/surface_obs/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "0"
+    }
+   ],
+   "khong_chu_giai": true,
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "obs_wind",
+   "g": "obs",
+   "name": "Gió quan trắc tại sân bay (mũi tên gió)",
+   "en": "METAR Wind Arrows",
+   "chip": "Wind",
+   "op": 1,
+   "src": "NWS / AWC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/aviation/awc_aviation_weather/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "12"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "obs_cloud",
+   "g": "obs",
+   "name": "Độ che phủ mây",
+   "en": "Total Cloud Cover",
+   "chip": "Cloud Cover",
+   "op": 1,
+   "src": "NWS / NOAA",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/obs/surface_obs/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "100"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "lsr",
+   "g": "obs",
+   "name": "Báo cáo thiệt hại: lốc, mưa đá, gió, lũ (LSR)",
+   "en": "Local Storm Reports",
+   "chip": "Storm Reports",
+   "op": 1,
+   "src": "NWS Local Storm Reports",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/obs/nws_local_storm_reports/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "24 giờ qua",
+     "en": "Past 24 Hours",
+     "val": "0"
+    },
+    {
+     "vi": "48 giờ qua",
+     "en": "Past 48 Hours",
+     "val": "1"
+    },
+    {
+     "vi": "72 giờ qua",
+     "en": "Past 72 Hours",
+     "val": "2"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "qpe",
+   "g": "obs",
+   "name": "Lượng mưa đã rơi (Observed Precip)",
+   "en": "RFC QPE",
+   "chip": "Observed Rain",
+   "op": 0.75,
+   "src": "NWS River Forecast Centers",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/obs/rfc_qpe/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "1 giờ qua",
+     "en": "Past Hour",
+     "val": "5"
+    },
+    {
+     "vi": "3 giờ qua",
+     "en": "Past 3 Hours",
+     "val": "13"
+    },
+    {
+     "vi": "6 giờ qua",
+     "en": "Past 6 Hours",
+     "val": "17"
+    },
+    {
+     "vi": "24 giờ qua",
+     "en": "Past 24 Hours",
+     "val": "25"
+    },
+    {
+     "vi": "72 giờ qua",
+     "en": "Past 72 Hours",
+     "val": "37"
+    },
+    {
+     "vi": "7 ngày qua",
+     "en": "Past 7 Days",
+     "val": "53"
+    },
+    {
+     "vi": "30 ngày qua",
+     "en": "Past 30 Days",
+     "val": "65"
+    },
+    {
+     "vi": "Từ đầu tháng",
+     "en": "Month to Date",
+     "val": "89"
+    },
+    {
+     "vi": "% so với bình thường – 30 ngày",
+     "en": "% of Normal · 30 Days",
+     "val": "224"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "snow_depth",
+   "g": "obs",
+   "name": "Độ dày tuyết trên mặt đất",
+   "en": "NOHRSC Snow Analysis",
+   "chip": "Snow Cover",
+   "op": 0.75,
+   "src": "NOAA NOHRSC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/snow/NOHRSC_Snow_Analysis/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Độ dày tuyết",
+     "en": "Snow Depth",
+     "val": "0"
+    },
+    {
+     "vi": "Lượng nước trong tuyết (SWE)",
+     "en": "Snow Water Equivalent",
+     "val": "4"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "snow_cover",
+   "g": "obs",
+   "name": "Vùng phủ tuyết & băng (1 km)",
+   "en": "IMS Snow & Ice",
+   "chip": "Snow & Ice",
+   "op": 0.6,
+   "src": "U.S. National Ice Center",
+   "kieu": "agi",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/obs/usnic_ims_snow_ice_1km/ImageServer",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": ""
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "hrrr",
+   "g": "fcst",
+   "name": "Radar dự báo HRRR (Future Radar)",
+   "en": "HRRR Simulated Reflectivity",
+   "chip": "Future Radar · HRRR",
+   "op": 0.8,
+   "src": "NOAA HRRR via Iowa Environmental Mesonet",
+   "note": "Mô phỏng radar từ lượt chạy HRRR mới nhất, tới 18 giờ. Bấm ▶ để chạy.",
+   "kieu": "xyz",
+   "tpl": "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/hrrr::REFD-F{v}-0/{z}/{x}/{y}.png",
+   "v": [
+    {
+     "vi": "+1 giờ",
+     "en": "+1 HR",
+     "val": "0060"
+    },
+    {
+     "vi": "+2 giờ",
+     "en": "+2 HR",
+     "val": "0120"
+    },
+    {
+     "vi": "+3 giờ",
+     "en": "+3 HR",
+     "val": "0180"
+    },
+    {
+     "vi": "+4 giờ",
+     "en": "+4 HR",
+     "val": "0240"
+    },
+    {
+     "vi": "+5 giờ",
+     "en": "+5 HR",
+     "val": "0300"
+    },
+    {
+     "vi": "+6 giờ",
+     "en": "+6 HR",
+     "val": "0360"
+    },
+    {
+     "vi": "+7 giờ",
+     "en": "+7 HR",
+     "val": "0420"
+    },
+    {
+     "vi": "+8 giờ",
+     "en": "+8 HR",
+     "val": "0480"
+    },
+    {
+     "vi": "+9 giờ",
+     "en": "+9 HR",
+     "val": "0540"
+    },
+    {
+     "vi": "+10 giờ",
+     "en": "+10 HR",
+     "val": "0600"
+    },
+    {
+     "vi": "+11 giờ",
+     "en": "+11 HR",
+     "val": "0660"
+    },
+    {
+     "vi": "+12 giờ",
+     "en": "+12 HR",
+     "val": "0720"
+    },
+    {
+     "vi": "+13 giờ",
+     "en": "+13 HR",
+     "val": "0780"
+    },
+    {
+     "vi": "+14 giờ",
+     "en": "+14 HR",
+     "val": "0840"
+    },
+    {
+     "vi": "+15 giờ",
+     "en": "+15 HR",
+     "val": "0900"
+    },
+    {
+     "vi": "+16 giờ",
+     "en": "+16 HR",
+     "val": "0960"
+    },
+    {
+     "vi": "+17 giờ",
+     "en": "+17 HR",
+     "val": "1020"
+    },
+    {
+     "vi": "+18 giờ",
+     "en": "+18 HR",
+     "val": "1080"
+    }
+   ],
+   "thang": "dbz",
+   "thoi_gian": "bien_the"
+  },
+  {
+   "id": "chart",
+   "g": "fcst",
+   "name": "Bản đồ dự báo toàn quốc: front, H/L, vùng mưa",
+   "en": "WPC National Forecast Chart",
+   "chip": "National Forecast",
+   "op": 0.9,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/natl_fcst_wx_chart/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Hôm nay – đầy đủ",
+     "en": "Today",
+     "val": "1,2,3,4,5,6,7,8,9,10,11"
+    },
+    {
+     "vi": "Ngày mai – đầy đủ",
+     "en": "Tomorrow",
+     "val": "13,14,15,16,17,18,19,20,21,22,23"
+    },
+    {
+     "vi": "Ngày kia – đầy đủ",
+     "en": "Day 3",
+     "val": "25,26,27,28,29,30,31,32,33,34,35"
+    },
+    {
+     "vi": "Hôm nay – chỉ front & H/L",
+     "en": "Today · Fronts",
+     "val": "1,2"
+    },
+    {
+     "vi": "Ngày mai – chỉ front & H/L",
+     "en": "Tomorrow · Fronts",
+     "val": "13,14"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ndfd_t",
+   "g": "fcst",
+   "name": "Nhiệt độ dự báo theo giờ",
+   "en": "NDFD Temperature",
+   "chip": "Temperature",
+   "op": 0.6,
+   "src": "NWS NDFD",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/NDFD/NDFD_temp/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Sau +3 giờ",
+     "en": "+3 HR",
+     "val": "9"
+    },
+    {
+     "vi": "Sau +6 giờ",
+     "en": "+6 HR",
+     "val": "13"
+    },
+    {
+     "vi": "Sau +9 giờ",
+     "en": "+9 HR",
+     "val": "17"
+    },
+    {
+     "vi": "Sau +12 giờ",
+     "en": "+12 HR",
+     "val": "21"
+    },
+    {
+     "vi": "Sau +15 giờ",
+     "en": "+15 HR",
+     "val": "25"
+    },
+    {
+     "vi": "Sau +18 giờ",
+     "en": "+18 HR",
+     "val": "29"
+    },
+    {
+     "vi": "Sau +21 giờ",
+     "en": "+21 HR",
+     "val": "33"
+    },
+    {
+     "vi": "Sau +24 giờ",
+     "en": "+24 HR",
+     "val": "37"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ndfd_max",
+   "g": "fcst",
+   "name": "Nhiệt độ cao nhất / thấp nhất",
+   "en": "NDFD Max/Min Temperature",
+   "chip": "Forecast Temps",
+   "op": 0.6,
+   "src": "NWS NDFD",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/NDFD/NDFD_temp/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Cao nhất hôm nay",
+     "en": "Highs Today",
+     "val": "124"
+    },
+    {
+     "vi": "Cao nhất ngày mai",
+     "en": "Highs Tomorrow",
+     "val": "128"
+    },
+    {
+     "vi": "Cao nhất ngày kia",
+     "en": "Highs Day 3",
+     "val": "132"
+    },
+    {
+     "vi": "Thấp nhất đêm nay",
+     "en": "Lows Tonight",
+     "val": "137"
+    },
+    {
+     "vi": "Thấp nhất đêm mai",
+     "en": "Lows Tomorrow Night",
+     "val": "141"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ndfd_apt",
+   "g": "fcst",
+   "name": "Nhiệt độ cảm nhận (Heat Index / Wind Chill)",
+   "en": "NDFD Apparent Temperature",
+   "chip": "Feels Like",
+   "op": 0.6,
+   "src": "NWS NDFD",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/NDFD/NDFD_temp/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Sau +3 giờ",
+     "en": "+3 HR",
+     "val": "50"
+    },
+    {
+     "vi": "Sau +6 giờ",
+     "en": "+6 HR",
+     "val": "54"
+    },
+    {
+     "vi": "Sau +9 giờ",
+     "en": "+9 HR",
+     "val": "58"
+    },
+    {
+     "vi": "Sau +12 giờ",
+     "en": "+12 HR",
+     "val": "62"
+    },
+    {
+     "vi": "Sau +15 giờ",
+     "en": "+15 HR",
+     "val": "66"
+    },
+    {
+     "vi": "Sau +18 giờ",
+     "en": "+18 HR",
+     "val": "70"
+    },
+    {
+     "vi": "Sau +21 giờ",
+     "en": "+21 HR",
+     "val": "74"
+    },
+    {
+     "vi": "Sau +24 giờ",
+     "en": "+24 HR",
+     "val": "78"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ndfd_rh",
+   "g": "fcst",
+   "name": "Độ ẩm tương đối",
+   "en": "NDFD Relative Humidity",
+   "chip": "Humidity",
+   "op": 0.6,
+   "src": "NWS NDFD",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/NDFD/NDFD_temp/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Sau +3 giờ",
+     "en": "+3 HR",
+     "val": "91"
+    },
+    {
+     "vi": "Sau +6 giờ",
+     "en": "+6 HR",
+     "val": "95"
+    },
+    {
+     "vi": "Sau +9 giờ",
+     "en": "+9 HR",
+     "val": "99"
+    },
+    {
+     "vi": "Sau +12 giờ",
+     "en": "+12 HR",
+     "val": "103"
+    },
+    {
+     "vi": "Sau +15 giờ",
+     "en": "+15 HR",
+     "val": "107"
+    },
+    {
+     "vi": "Sau +18 giờ",
+     "en": "+18 HR",
+     "val": "111"
+    },
+    {
+     "vi": "Sau +21 giờ",
+     "en": "+21 HR",
+     "val": "115"
+    },
+    {
+     "vi": "Sau +24 giờ",
+     "en": "+24 HR",
+     "val": "119"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "qpf",
+   "g": "fcst",
+   "name": "Lượng mưa dự báo (QPF)",
+   "en": "WPC Quantitative Precip Forecast",
+   "chip": "Rain Forecast",
+   "op": 0.65,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/precip/wpc_qpf/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "6 giờ tới",
+     "en": "Next 6 Hours",
+     "val": "7"
+    },
+    {
+     "vi": "Ngày 1",
+     "en": "Day 1",
+     "val": "1"
+    },
+    {
+     "vi": "Ngày 2",
+     "en": "Day 2",
+     "val": "2"
+    },
+    {
+     "vi": "Ngày 3",
+     "en": "Day 3",
+     "val": "3"
+    },
+    {
+     "vi": "Tổng 2 ngày",
+     "en": "2-Day Total",
+     "val": "8"
+    },
+    {
+     "vi": "Tổng 3 ngày",
+     "en": "3-Day Total",
+     "val": "9"
+    },
+    {
+     "vi": "Tổng 5 ngày",
+     "en": "5-Day Total",
+     "val": "10"
+    },
+    {
+     "vi": "Tổng 7 ngày",
+     "en": "7-Day Total",
+     "val": "11"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "spc",
+   "g": "severe",
+   "name": "Nguy cơ giông lốc SPC (Convective Outlook)",
+   "en": "SPC Convective Outlook",
+   "chip": "SPC Outlook",
+   "op": 0.55,
+   "src": "NOAA Storm Prediction Center",
+   "note": "TSTM giông thường · MRGL 1 · SLGT 2 · ENH 3 · MDT 4 · HIGH 5.",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Ngày 1 · 5 cấp nguy cơ",
+     "en": "Day 1 · Categorical",
+     "val": "1"
+    },
+    {
+     "vi": "Ngày 1 · xác suất lốc xoáy",
+     "en": "Day 1 · Tornado Probability",
+     "val": "3"
+    },
+    {
+     "vi": "Ngày 1 · xác suất mưa đá",
+     "en": "Day 1 · Hail Probability",
+     "val": "5"
+    },
+    {
+     "vi": "Ngày 1 · xác suất gió mạnh",
+     "en": "Day 1 · Wind Probability",
+     "val": "7"
+    },
+    {
+     "vi": "Ngày 2 · 5 cấp nguy cơ",
+     "en": "Day 2 · Categorical",
+     "val": "9"
+    },
+    {
+     "vi": "Ngày 2 · xác suất lốc xoáy",
+     "en": "Day 2 · Tornado Probability",
+     "val": "11"
+    },
+    {
+     "vi": "Ngày 2 · xác suất mưa đá",
+     "en": "Day 2 · Hail Probability",
+     "val": "13"
+    },
+    {
+     "vi": "Ngày 2 · xác suất gió mạnh",
+     "en": "Day 2 · Wind Probability",
+     "val": "15"
+    },
+    {
+     "vi": "Ngày 3 · 5 cấp nguy cơ",
+     "en": "Day 3 · Categorical",
+     "val": "17"
+    },
+    {
+     "vi": "Ngày 3 · xác suất",
+     "en": "Day 3 · Severe Probability",
+     "val": "19"
+    },
+    {
+     "vi": "Ngày 4",
+     "en": "Day 4",
+     "val": "21"
+    },
+    {
+     "vi": "Ngày 5",
+     "en": "Day 5",
+     "val": "22"
+    },
+    {
+     "vi": "Ngày 6",
+     "en": "Day 6",
+     "val": "23"
+    },
+    {
+     "vi": "Ngày 7",
+     "en": "Day 7",
+     "val": "24"
+    },
+    {
+     "vi": "Ngày 8",
+     "en": "Day 8",
+     "val": "25"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "spc_md",
+   "g": "severe",
+   "name": "Thảo luận khẩn SPC (Mesoscale Discussion)",
+   "en": "SPC Mesoscale Discussions",
+   "chip": "SPC Mesoscale Discussion",
+   "op": 0.9,
+   "src": "NOAA Storm Prediction Center",
+   "note": "Vùng SPC đang theo dõi, thường sắp ra Watch.",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/spc_mesoscale_discussion/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "0"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ero",
+   "g": "severe",
+   "name": "Nguy cơ mưa lớn gây lũ quét (ERO)",
+   "en": "WPC Excessive Rainfall Outlook",
+   "chip": "Excessive Rainfall Outlook",
+   "op": 0.55,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/hazards/wpc_precip_hazards/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Ngày 1",
+     "en": "Day 1",
+     "val": "0"
+    },
+    {
+     "vi": "Ngày 2",
+     "en": "Day 2",
+     "val": "1"
+    },
+    {
+     "vi": "Ngày 3",
+     "en": "Day 3",
+     "val": "2"
+    },
+    {
+     "vi": "Ngày 4",
+     "en": "Day 4",
+     "val": "3"
+    },
+    {
+     "vi": "Ngày 5",
+     "en": "Day 5",
+     "val": "4"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "ffg",
+   "g": "severe",
+   "name": "Ngưỡng mưa gây lũ quét (Flash Flood Guidance)",
+   "en": "RFC Flash Flood Guidance",
+   "chip": "Flash Flood Guidance",
+   "op": 0.6,
+   "src": "NWS River Forecast Centers",
+   "note": "Lượng mưa (inch) đủ để gây lũ quét. Càng thấp càng dễ lũ.",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/precip/rfc_gridded_ffg/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Trong 1 giờ",
+     "en": "1-Hour",
+     "val": "0"
+    },
+    {
+     "vi": "Trong 3 giờ",
+     "en": "3-Hour",
+     "val": "4"
+    },
+    {
+     "vi": "Trong 6 giờ",
+     "en": "6-Hour",
+     "val": "8"
+    },
+    {
+     "vi": "Trong 12 giờ",
+     "en": "12-Hour",
+     "val": "12"
+    },
+    {
+     "vi": "Trong 24 giờ",
+     "en": "24-Hour",
+     "val": "16"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "fire",
+   "g": "severe",
+   "name": "Nguy cơ cháy rừng SPC",
+   "en": "SPC Fire Weather Outlook",
+   "chip": "Fire Weather Outlook",
+   "op": 0.6,
+   "src": "NOAA Storm Prediction Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/fire_weather/SPC_firewx/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Ngày 1 · gió & khô",
+     "en": "Day 1 · Wind & Low RH",
+     "val": "1"
+    },
+    {
+     "vi": "Ngày 1 · giông khô",
+     "en": "Day 1 · Dry Thunderstorms",
+     "val": "2"
+    },
+    {
+     "vi": "Ngày 2 · gió & khô",
+     "en": "Day 2 · Wind & Low RH",
+     "val": "4"
+    },
+    {
+     "vi": "Ngày 2 · giông khô",
+     "en": "Day 2 · Dry Thunderstorms",
+     "val": "5"
+    },
+    {
+     "vi": "Ngày 3–8 · gió & khô",
+     "en": "Days 3-8 · Wind & Low RH",
+     "val": "8,11,14,17,20,23"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "wssi",
+   "g": "winter",
+   "name": "Mức tác động bão tuyết (WSSI)",
+   "en": "WPC Winter Storm Severity Index",
+   "chip": "Winter Storm Severity",
+   "op": 0.6,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/wpc_wssi/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Tổng thể · 3 ngày",
+     "en": "Overall · Days 1-3",
+     "val": "4"
+    },
+    {
+     "vi": "Tổng thể · ngày 1",
+     "en": "Overall · Day 1",
+     "val": "1"
+    },
+    {
+     "vi": "Tổng thể · ngày 2",
+     "en": "Overall · Day 2",
+     "val": "2"
+    },
+    {
+     "vi": "Tổng thể · ngày 3",
+     "en": "Overall · Day 3",
+     "val": "3"
+    },
+    {
+     "vi": "Lượng tuyết · 3 ngày",
+     "en": "Snow Amount · Days 1-3",
+     "val": "9"
+    },
+    {
+     "vi": "Tuyết đè nặng · 3 ngày",
+     "en": "Snow Load · Days 1-3",
+     "val": "14"
+    },
+    {
+     "vi": "Băng bám · 3 ngày",
+     "en": "Ice Accumulation · Days 1-3",
+     "val": "19"
+    },
+    {
+     "vi": "Tuyết thổi bay · 3 ngày",
+     "en": "Blowing Snow · Days 1-3",
+     "val": "27"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "wpc_snow",
+   "g": "winter",
+   "name": "Xác suất tuyết dày / băng bám",
+   "en": "WPC Winter Precip Probabilities",
+   "chip": "Snow / Ice Odds",
+   "op": 0.6,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/precip/wpc_prob_winter_precip/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Ngày 1 · tuyết ≥ 4 in",
+     "en": "Day 1 · Snow ≥ 4\"",
+     "val": "1"
+    },
+    {
+     "vi": "Ngày 1 · tuyết ≥ 8 in",
+     "en": "Day 1 · Snow ≥ 8\"",
+     "val": "2"
+    },
+    {
+     "vi": "Ngày 1 · tuyết ≥ 12 in",
+     "en": "Day 1 · Snow ≥ 12\"",
+     "val": "3"
+    },
+    {
+     "vi": "Ngày 1 · băng ≥ 0,25 in",
+     "en": "Day 1 · Ice ≥ 0.25\"",
+     "val": "4"
+    },
+    {
+     "vi": "Ngày 2 · tuyết ≥ 4 in",
+     "en": "Day 2 · Snow ≥ 4\"",
+     "val": "6"
+    },
+    {
+     "vi": "Ngày 2 · tuyết ≥ 8 in",
+     "en": "Day 2 · Snow ≥ 8\"",
+     "val": "7"
+    },
+    {
+     "vi": "Ngày 2 · tuyết ≥ 12 in",
+     "en": "Day 2 · Snow ≥ 12\"",
+     "val": "8"
+    },
+    {
+     "vi": "Ngày 2 · băng ≥ 0,25 in",
+     "en": "Day 2 · Ice ≥ 0.25\"",
+     "val": "9"
+    },
+    {
+     "vi": "Ngày 3 · tuyết ≥ 4 in",
+     "en": "Day 3 · Snow ≥ 4\"",
+     "val": "11"
+    },
+    {
+     "vi": "Ngày 3 · tuyết ≥ 8 in",
+     "en": "Day 3 · Snow ≥ 8\"",
+     "val": "12"
+    },
+    {
+     "vi": "Ngày 3 · tuyết ≥ 12 in",
+     "en": "Day 3 · Snow ≥ 12\"",
+     "val": "13"
+    },
+    {
+     "vi": "Ngày 3 · băng ≥ 0,25 in",
+     "en": "Day 3 · Ice ≥ 0.25\"",
+     "val": "14"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "wwo",
+   "g": "winter",
+   "name": "Triển vọng thời tiết mùa đông ngày 4–7",
+   "en": "WPC Winter Weather Outlook",
+   "chip": "Winter Weather Outlook",
+   "op": 0.6,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/outlooks/winter_weather_outlook/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "Ngày 4",
+     "en": "Day 4",
+     "val": "0"
+    },
+    {
+     "vi": "Ngày 5",
+     "en": "Day 5",
+     "val": "20"
+    },
+    {
+     "vi": "Ngày 6",
+     "en": "Day 6",
+     "val": "16"
+    },
+    {
+     "vi": "Ngày 7",
+     "en": "Day 7",
+     "val": "24"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "tc_wind",
+   "g": "tropic",
+   "name": "Vùng gió bão hiện tại",
+   "en": "NHC Current Wind Extent",
+   "chip": "Tropical Winds",
+   "op": 0.6,
+   "src": "NOAA NHC / nowCOAST",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "tropical_cyclones:tropical_cyclone_current_wind_extent"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "tc_ww",
+   "g": "tropic",
+   "name": "Cảnh báo bão dọc bờ biển",
+   "en": "NHC Coastal Watches/Warnings",
+   "chip": "Hurricane Alerts",
+   "op": 1,
+   "src": "NOAA NHC / nowCOAST",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "tropical_cyclones:tropical_cyclone_watches_warnings"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "tc_swath",
+   "g": "tropic",
+   "name": "Dải gió bão đã quét qua",
+   "en": "NHC Observed Wind Swath",
+   "chip": "Wind Swath",
+   "op": 0.55,
+   "src": "NOAA NHC / nowCOAST",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "tropical_cyclones:tropical_cyclone_observed_wind_extent"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "surge",
+   "g": "tropic",
+   "name": "Ngập do nước dâng (Storm Surge)",
+   "en": "NHC Potential Storm Surge Flooding",
+   "chip": "Storm Surge",
+   "op": 0.8,
+   "src": "NOAA NHC / nowCOAST",
+   "note": "Chỉ có khi NHC ban hành cảnh báo nước dâng.",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "tropical_storm_surge:inundation"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "sst",
+   "g": "tropic",
+   "name": "Nhiệt độ mặt nước biển",
+   "en": "Sea Surface Temperature",
+   "chip": "Water Temperature",
+   "op": 0.7,
+   "src": "NOAA nowCOAST",
+   "note": "Nước ≥ 26 °C (79 °F) nuôi bão mạnh lên.",
+   "kieu": "wms",
+   "url": "https://nowcoast.noaa.gov/geoserver/ows?service=WMS&version=1.3.0",
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "sea_surface_temperature:global_sea_surface_temperature"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "sst_anom",
+   "g": "tropic",
+   "name": "Mặt nước biển ấm/lạnh hơn bình thường",
+   "en": "CPC Weekly SST Anomaly",
+   "chip": "Water Temp Anomaly",
+   "op": 0.65,
+   "src": "NOAA CPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/raster/rest/services/climate/cpc_wkly_sst/MapServer",
+   "raster": true,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "4"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "cpc610",
+   "g": "long",
+   "name": "Triển vọng 6–10 ngày",
+   "en": "CPC 6–10 Day Outlook",
+   "chip": "6-10 Day Outlook",
+   "op": 0.6,
+   "src": "NOAA Climate Prediction Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_6_10_day_outlk/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Nhiệt độ",
+     "en": "Temperature",
+     "val": "0"
+    },
+    {
+     "vi": "Lượng mưa",
+     "en": "Precipitation",
+     "val": "1"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "cpc814",
+   "g": "long",
+   "name": "Triển vọng 8–14 ngày",
+   "en": "CPC 8–14 Day Outlook",
+   "chip": "8-14 Day Outlook",
+   "op": 0.6,
+   "src": "NOAA Climate Prediction Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_8_14_day_outlk/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Nhiệt độ",
+     "en": "Temperature",
+     "val": "0"
+    },
+    {
+     "vi": "Lượng mưa",
+     "en": "Precipitation",
+     "val": "1"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "cpch",
+   "g": "long",
+   "name": "Hiểm họa sắp tới: nóng/lạnh cực đoan, mưa lớn",
+   "en": "CPC Hazards Outlook",
+   "chip": "Hazards Outlook",
+   "op": 0.6,
+   "src": "NOAA Climate Prediction Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/hazards/cpc_weather_hazards/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "3–7 ngày · nhiệt độ",
+     "en": "3-7 Day · Temperature",
+     "val": "1"
+    },
+    {
+     "vi": "3–7 ngày · mưa",
+     "en": "3-7 Day · Precipitation",
+     "val": "4"
+    },
+    {
+     "vi": "3–7 ngày · cháy rừng/hạn",
+     "en": "3-7 Day · Wildfire & Drought",
+     "val": "7"
+    },
+    {
+     "vi": "8–14 ngày · nhiệt độ",
+     "en": "8-14 Day · Temperature",
+     "val": "3"
+    },
+    {
+     "vi": "8–14 ngày · mưa",
+     "en": "8-14 Day · Precipitation",
+     "val": "6"
+    },
+    {
+     "vi": "8–14 ngày · cháy rừng/hạn",
+     "en": "8-14 Day · Wildfire & Drought",
+     "val": "8"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "drought",
+   "g": "long",
+   "name": "Triển vọng hạn hán",
+   "en": "CPC Drought Outlook",
+   "chip": "Drought Outlook",
+   "op": 0.6,
+   "src": "NOAA Climate Prediction Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Tháng tới",
+     "en": "Monthly",
+     "val": "1"
+    },
+    {
+     "vi": "Mùa tới",
+     "en": "Seasonal",
+     "val": "4"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "nwm",
+   "g": "env",
+   "name": "Sông suối dâng bất thường (National Water Model)",
+   "en": "NWM Streamflow Anomaly",
+   "chip": "Streamflow",
+   "op": 0.9,
+   "src": "NOAA National Water Model",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/obs/NWM_Stream_Analysis/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Mức bất thường",
+     "en": "Anomaly",
+     "val": "14"
+    },
+    {
+     "vi": "Lưu lượng (cfs)",
+     "en": "Streamflow (cfs)",
+     "val": "0"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "rivfl",
+   "g": "env",
+   "name": "Triển vọng lũ sông",
+   "en": "Significant River Flood Outlook",
+   "chip": "River Flood Outlook",
+   "op": 0.6,
+   "src": "NOAA WPC",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/sig_riv_fld_outlk/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "0"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "smoke",
+   "g": "env",
+   "name": "Khói cháy rừng",
+   "en": "NDGD Smoke",
+   "chip": "Wildfire Smoke",
+   "op": 0.7,
+   "src": "NOAA NDGD (HRRR-Smoke)",
+   "kieu": "agi",
+   "svc": null,
+   "v": [
+    {
+     "vi": "Sát mặt đất",
+     "en": "Near-Surface",
+     "val": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_sfc_1hr_avg_time/ImageServer"
+    },
+    {
+     "vi": "Cả cột khí (trên cao)",
+     "en": "Vertically Integrated",
+     "val": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_vert_1hr_avg_time/ImageServer"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "aq",
+   "g": "env",
+   "name": "Chất lượng không khí: PM2.5, ozone, bụi",
+   "en": "NDGD Air Quality",
+   "chip": "Air Quality",
+   "op": 0.6,
+   "src": "NOAA NDGD",
+   "kieu": "agi",
+   "svc": null,
+   "v": [
+    {
+     "vi": "Bụi mịn PM2.5 (1 giờ)",
+     "en": "PM2.5",
+     "val": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_apm25_hr01/ImageServer"
+    },
+    {
+     "vi": "Ozone (cao nhất 8 giờ)",
+     "en": "Ozone 8-Hr Max",
+     "val": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_ozone_8hr_max_time/ImageServer"
+    },
+    {
+     "vi": "Bụi (dust)",
+     "en": "Dust",
+     "val": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_dust_sfc_time/ImageServer"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "avn_sig",
+   "g": "avn",
+   "name": "SIGMET / G-AIRMET",
+   "en": "AWC SIGMET & G-AIRMET",
+   "chip": "Aviation Hazards",
+   "op": 0.7,
+   "src": "NWS Aviation Weather Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/aviation/awc_aviation_weather/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "SIGMET",
+     "en": "SIGMET",
+     "val": "111"
+    },
+    {
+     "vi": "G-AIRMET",
+     "en": "G-AIRMET",
+     "val": "110"
+    },
+    {
+     "vi": "Cảnh báo trung tâm (CWA)",
+     "en": "Center Weather Advisory",
+     "val": "113"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "avn_pirep",
+   "g": "avn",
+   "name": "Báo cáo phi công: nhiễu động, đóng băng",
+   "en": "Pilot Reports",
+   "chip": "Pilot Reports",
+   "op": 1,
+   "src": "NWS Aviation Weather Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/aviation/awc_aviation_weather/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "Tất cả PIREP",
+     "en": "All PIREPs",
+     "val": "0"
+    },
+    {
+     "vi": "Nhiễu động",
+     "en": "Turbulence",
+     "val": "1"
+    },
+    {
+     "vi": "Đóng băng",
+     "en": "Icing",
+     "val": "3"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  },
+  {
+   "id": "avn_cat",
+   "g": "avn",
+   "name": "Điều kiện bay tại sân bay (VFR/IFR)",
+   "en": "METAR Flight Category",
+   "chip": "Flight Conditions",
+   "op": 1,
+   "src": "NWS Aviation Weather Center",
+   "kieu": "ags",
+   "svc": "https://mapservices.weather.noaa.gov/vector/rest/services/aviation/awc_aviation_weather/MapServer",
+   "raster": false,
+   "v": [
+    {
+     "vi": "",
+     "en": "",
+     "val": "34"
+    }
+   ],
+   "thoi_gian": "hien_tai"
+  }
+ ],
+ "bo_dung_san": [
+  {
+   "ten": "Giông lốc xoáy",
+   "lop": [
+    "spc:0",
+    "lsr:0",
+    "lightning:0",
+    "rad_cref:0"
+   ],
+   "radar": true
+  },
+  {
+   "ten": "Bão tuyết, giá rét",
+   "lop": [
+    "rad_ptype:0",
+    "wssi:0",
+    "wpc_snow:0",
+    "chart:3"
+   ]
+  },
+  {
+   "ten": "Bão nhiệt đới",
+   "lop": [
+    "sat_ir:0",
+    "tc_wind:0",
+    "tc_ww:0",
+    "surge:0",
+    "qpf:5"
+   ],
+   "radar": true
+  },
+  {
+   "ten": "Mưa lớn, lũ lụt",
+   "lop": [
+    "ero:0",
+    "qpf:5",
+    "qpe:3",
+    "nwm:0"
+   ]
+  },
+  {
+   "ten": "Nắng nóng, cháy rừng",
+   "lop": [
+    "ndfd_max:0",
+    "fire:0",
+    "smoke:0"
+   ]
+  },
+  {
+   "ten": "Tổng quan toàn quốc",
+   "lop": [
+    "sat_ir:0",
+    "chart:0"
+   ],
+   "radar": true
+  },
+  {
+   "ten": "Dự báo dài hạn",
+   "lop": [
+    "cpc610:0",
+    "cpch:0"
+   ]
+  }
+ ]
+}
