@@ -1,6 +1,6 @@
 # Danh mục lớp bản đồ NOAA
 
-Mỗi lớp: mã · tên · chip trên video · thời gian · biến thể (`mã:số` hoặc `mã:đoạn nhãn`).
+Mỗi lớp: mã · tên · chip trên video · thời gian · biến thể. Chọn biến thể bằng `mã:số` (thứ tự) hoặc `mã:đoạn nhãn` (vd `qpf:Tổng 3`, `lsr:72`).
 Xem nhanh trong terminal: `python -X utf8 xuat.py --danh-sach [từ khoá]`.
 
 ## Mục lục
@@ -115,6 +115,7 @@ Xem nhanh trong terminal: `python -X utf8 xuat.py --danh-sach [từ khoá]`.
   Nguồn: NWS NDFD
 
 **`qpf`** — Lượng mưa dự báo (QPF) · chip `RAIN FORECAST` · chỉ bản mới nhất
+  Miền dữ liệu có rìa cắt chéo ngoài Đại Tây Dương (khoảng kinh độ −68°): khung miền Đông nên dừng ở lon1 ≈ −69.
   Biến thể: `0` 6 giờ tới (Next 6 Hours) · `1` Ngày 1 (Day 1) · `2` Ngày 2 (Day 2) · `3` Ngày 3 (Day 3) · `4` Tổng 2 ngày (2-Day Total) · `5` Tổng 3 ngày (3-Day Total) · `6` Tổng 5 ngày (5-Day Total) · `7` Tổng 7 ngày (7-Day Total)
   Nguồn: NOAA WPC
 

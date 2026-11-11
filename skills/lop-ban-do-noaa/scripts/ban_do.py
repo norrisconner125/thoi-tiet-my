@@ -442,6 +442,15 @@ def ve_chu_giai(cg, tieu):
     return im
 
 
+def hrrr_chay():
+    """Giờ khởi chạy (UTC) của lượt HRRR mà ô ảnh IEM đang dùng; None nếu không đọc được."""
+    try:
+        j = json.loads(tai("https://mesonet.agron.iastate.edu/data/gis/images/4326/hrrr/refd_0000.json", lan=2))
+        return datetime.strptime(j["model_init_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
 # ---------------- Giờ địa phương Mỹ (không cần tzdata) ----------------
 TZ = {"ET": (-5, "EST", "EDT"), "CT": (-6, "CST", "CDT"), "MT": (-7, "MST", "MDT"), "AZ": (-7, "MST", "MST"), "PT": (-8, "PST", "PDT"),
       "AKT": (-9, "AKST", "AKDT"), "HT": (-10, "HST", "HST")}

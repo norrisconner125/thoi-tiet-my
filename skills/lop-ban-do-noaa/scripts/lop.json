@@ -434,7 +434,8 @@
      "val": "224"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "IN"
   },
   {
    "id": "snow_depth",
@@ -459,7 +460,8 @@
      "val": "4"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "IN"
   },
   {
    "id": "snow_cover",
@@ -679,7 +681,8 @@
      "val": "37"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "°F"
   },
   {
    "id": "ndfd_max",
@@ -719,7 +722,8 @@
      "val": "141"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "°F"
   },
   {
    "id": "ndfd_apt",
@@ -774,7 +778,8 @@
      "val": "78"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "°F"
   },
   {
    "id": "ndfd_rh",
@@ -829,7 +834,8 @@
      "val": "119"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "%"
   },
   {
    "id": "qpf",
@@ -884,7 +890,9 @@
      "val": "11"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "IN",
+   "note": "Miền dữ liệu có rìa cắt chéo ngoài Đại Tây Dương (khoảng kinh độ −68°): khung miền Đông nên dừng ở lon1 ≈ −69."
   },
   {
    "id": "spc",
@@ -1077,7 +1085,8 @@
      "val": "16"
     }
    ],
-   "thoi_gian": "hien_tai"
+   "thoi_gian": "hien_tai",
+   "don_vi": "IN"
   },
   {
    "id": "fire",

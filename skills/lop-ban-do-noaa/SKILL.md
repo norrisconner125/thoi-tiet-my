@@ -25,7 +25,7 @@ Chạy Python với `-X utf8`. Đừng nhét code nhiều dòng vào `python -c`
 |---|---|---|
 | Lưu trữ | `radar` (khảm NEXRAD) | Mọi giờ trong quá khứ: `"vong": {"tu": "…Z", "den": "…Z", "buoc": 10}` hoặc ảnh tĩnh `"luc": "…Z"` |
 | Gần đây | `sat_vis`, `sat_ir`, `sat_wv`, `sat_sw`, `sat_snow` | Khoảng 8 giờ gần nhất: `"vong": {"gio": 3, "buoc": 10}` |
-| Giờ dự báo | `hrrr` | `"hrrr:*"` chạy +1…+18 giờ từ lượt chạy mới nhất |
+| Giờ dự báo | `hrrr` | `"hrrr:*"` chạy +1…+18 giờ từ lượt chạy mới nhất; chip ghi giờ địa phương hiệu lực, `bao_cao.json` ghi `hrrr_chay_utc` |
 | Hiện tại | tất cả lớp còn lại | Ảnh của bản mới nhất, có zoom chậm và hiện dần |
 
 - Kịch bản nói về sự kiện **đã qua** (vd lũ tuần trước): chỉ dùng `radar` lưu trữ. Các lớp "hiện tại" sẽ cho bản đồ **sai ngày**, đừng dùng. Nói rõ điều này với người dùng.
@@ -43,6 +43,11 @@ Chạy Python với `-X utf8`. Đừng nhét code nhiều dòng vào `python -c`
 | Cháy rừng, khói | `fire:0` · `smoke:0` · `aq:0` |
 | Tổng quan toàn quốc | `sat_ir` · `chart:0` (front, H/L, vùng mưa) |
 | Xu hướng 1–2 tuần | `cpc610:0` / `cpc610:1` · `cpc814` · `cpch` |
+
+Chọn biến thể bằng `mã:X`:
+- `X` là số nhỏ hơn số biến thể → theo thứ tự (`spc:1` = ngày 1, xác suất lốc).
+- Ngược lại → khớp một đoạn của nhãn tiếng Việt hoặc tiếng Anh, không phân biệt hoa thường (`qpf:Tổng 3`, `qpf:3-Day`, `lsr:72`, `qpe:24`).
+- Bỏ trống → biến thể 0. Riêng `hrrr:*` là chạy mọi giờ dự báo.
 
 Một cảnh tốt có **1–2 lớp dữ liệu**. Thêm lớp làm rối và che nhau. Danh mục đủ 50 lớp, mã biến thể và ghi chú: `references/danh_muc_lop.md`. Tra nhanh: `python -X utf8 "S/xuat.py" --danh-sach <từ khoá>`.
 
@@ -66,7 +71,7 @@ Một cảnh tốt có **1–2 lớp dữ liệu**. Thêm lớp làm rối và c
     {"id": "N04", "vung": "US", "lop": ["hrrr:*"], "tieu": ["FUTURE RADAR", "NEXT 18 HOURS"], "nhan": "xanh", "giay": 9}
   ] }
 ```
-Tuỳ chọn mỗi cảnh: `zoom` (độ đẩy cuối, mặc định 1.06; 1.0 = đứng yên), `khung_giay` (giây mỗi khung khi chạy hình, mặc định 0.3), `tram` (trạm radar 3 chữ, vd `"TLX"`; bỏ trống thì lấy trạm gần tâm khung), `do_dam` (`{"spc": 0.7}`), `chu_giai` (false để tắt), `chip` (false để tắt chip), `ten_bang` (false để tắt tên bang mờ), `nguon` (thay dòng nguồn tự sinh).
+Tuỳ chọn mỗi cảnh: `ten_bang` (false để tắt tên bang mờ, nên tắt khi khung chỉ 1–3 bang và tên bang nằm dưới tiêu đề hoặc chú giải), `zoom` (độ đẩy cuối, mặc định 1.06; 1.0 = đứng yên), `khung_giay` (giây mỗi khung khi chạy hình, mặc định 0.3), `tram` (trạm radar 3 chữ, vd `"TLX"`; bỏ trống thì lấy trạm gần tâm khung), `do_dam` (`{"spc": 0.7}`), `chu_giai` (false để tắt), `chip` (false để tắt chip), `nguon` (thay dòng nguồn tự sinh).
 - `tz` là múi giờ hiện trên chip giờ: `ET`, `CT`, `MT`, `AZ`, `PT`, `AKT`, `HT` (tự đổi giờ mùa hè).
 - Giờ trong `vong` / `luc` luôn là **UTC** (`Z`). CST = UTC−6, CDT = UTC−5, EST = UTC−5, EDT = UTC−4.
 
@@ -77,7 +82,8 @@ python -X utf8 "S/xuat.py" "<canh.json>" --thu
 Chỉ ra PNG (nhanh, ~5 giây/cảnh). **Read từng PNG** và đọc dòng `⚠` in ra:
 - `lớp … gần như TRỐNG`: hôm nay NOAA không phát hành sản phẩm đó cho vùng này (vd không có nguy cơ giông). Đừng đưa bản đồ trống vào video: đổi biến thể (ngày khác), đổi lớp, nới vùng, hoặc bỏ cảnh và báo người dùng. Bản đồ trống mà lời đọc nói "nguy cơ cao" sẽ làm khán giả mất tin.
 - Nhìn chữ: tiêu đề có che vùng dữ liệu chính không, chú giải có đè lên chỗ quan trọng không. Che thì dời `bbox` cho vùng chính lệch lên/sang phải.
-- Gửi một ảnh cho người dùng duyệt khi đây là lần đầu họ thấy kiểu bản đồ.
+- Cảnh chạy hình: ảnh xem thử chỉ là **một** khung (radar/vệ tinh: khung cuối; HRRR: khung nhiều dữ liệu nhất trong +1, +9, +18 giờ), nên đừng bỏ cảnh chỉ vì khung đó ít mưa.
+- Lần đầu người dùng thấy kiểu bản đồ: gửi một ảnh để họ duyệt. Không có ai trả lời (chạy tự động) thì cứ xuất tiếp và đính kèm PNG trong báo cáo.
 
 ### 4. Xuất clip
 ```

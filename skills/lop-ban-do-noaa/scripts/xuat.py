@@ -121,12 +121,24 @@ def dung_canh(c, tz, chi_anh=False, log=print):
     ranh = B.ve_ranh_gioi(kh, c.get("ten_bang", True))
     duoi, tren, phu, canh_bao = Image.new("RGBA", nen.size, (0, 0, 0, 0)), Image.new("RGBA", nen.size, (0, 0, 0, 0)), {}, []
     khung = []  # [(nhãn chip giờ, ảnh lớp động đã mờ)]
+    hrrr_chay = [None]
     for k, (o, vi, _) in enumerate(ds):
         op = float(c.get("do_dam", {}).get(o["id"], o["op"])) if isinstance(c.get("do_dam"), dict) else o["op"]
         if dong and k == dong[0]:
             if dong[1] == "bien_the":
-                for j, v in enumerate(o["v"][:1] if chi_anh else o["v"]):
-                    im = B.anh_lop(kh, o, j, tram=tram); khung.append(((o["chip"].upper(), v["en"]), mo(im, op)))
+                init = B.hrrr_chay() if o["id"] == "hrrr" else None
+                if init: hrrr_chay[0] = init
+                # xem thử: lấy 3 khung (đầu, giữa, cuối) và giữ khung nhiều dữ liệu nhất, để % phủ không đánh lừa
+                js = sorted({0, len(o["v"]) // 2, len(o["v"]) - 1}) if chi_anh else range(len(o["v"]))
+                for j in js:
+                    v = o["v"][j]
+                    im = B.anh_lop(kh, o, j, tram=tram)
+                    nhan = v["en"]
+                    if init:
+                        nhan = B.gio_dia_phuong(init + timedelta(minutes=int(v["val"])), tz)[0] + " · " + v["en"]
+                    khung.append(((o["chip"].upper(), nhan), mo(im, op)))
+                if chi_anh:
+                    khung = [max(khung, key=lambda k: B.do_phu(k[1]))]
             else:
                 ts = thoi_diem(c["vong"], 10 if o["id"] == "radar" else 5)
                 for t in (ts[-1:] if chi_anh else ts):
@@ -148,7 +160,7 @@ def dung_canh(c, tz, chi_anh=False, log=print):
     if c.get("chu_giai", True):
         for o, vi, _ in ds:
             try:
-                im = B.ve_chu_giai(B.chu_giai(o, vi, kh), o["chip"])
+                im = B.ve_chu_giai(B.chu_giai(o, vi, kh), o["chip"] + (f" ({o['don_vi']})" if o.get("don_vi") else ""))
             except Exception as e:  # noqa: BLE001
                 im = None; canh_bao.append(f"chú giải {o['id']}: {e}")
             if im: cgs.append(im)
@@ -158,7 +170,7 @@ def dung_canh(c, tz, chi_anh=False, log=print):
     ds_chip = [(o, vi) for o, vi, _ in ds if not (dong and o is ds[dong[0]][0])] if khung else [(o, vi) for o, vi, _ in ds]
     log(f"  tải xong {time.time() - t0:.0f}s · phủ dữ liệu: " + ", ".join(f"{k} {v}%" for k, v in phu.items()))
     return {"kh": kh, "nen": nen, "ranh": ranh, "duoi": duoi, "tren": tren, "khung": khung, "cgs": cgs, "nguon": nguon,
-            "ds_chip": ds_chip, "phu": phu, "canh_bao": canh_bao, "tram": tram}
+            "ds_chip": ds_chip, "phu": phu, "canh_bao": canh_bao, "tram": tram, "hrrr_chay": hrrr_chay[0]}
 
 
 def anh_tinh(d, j=None):
@@ -189,6 +201,8 @@ def xuat_canh(c, ra, tz, chi_anh=False, log=print):
     kq = {"id": c["id"], "png": png, "lop": c["lop"], "phu_du_lieu": d["phu"], "canh_bao": d["canh_bao"], "nguon": d["nguon"],
           "tai_luc_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%MZ")}
     if d["tram"]: kq["tram"] = "K" + d["tram"]
+    if d["hrrr_chay"]: kq["hrrr_chay_utc"] = d["hrrr_chay"].strftime("%Y-%m-%d %H:%MZ")
+    if chi_anh and d["khung"]: kq["ghi_chu"] = "xem thử chỉ một khung (" + d["khung"][0][0][1] + "); % phủ là của khung nhiều dữ liệu nhất trong các khung đã tải"
     if d["khung"]: kq["khung_hinh"] = [g[1] for g, _ in d["khung"]]
     if chi_anh:
         return kq
